@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SEKRON DIGITAL — Painel de Empresas Credenciadas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --red:#EB1E28;--bordeaux:#9B1E28;--black:#0A1928;--offwhite:#F0F0EB;
+  --gray:#C3C8C3;--sand:#DCDCCD;--ocre:#B8A060;
+  --font-title:'Barlow Condensed',sans-serif;
+  --font-body:'Space Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--black);color:var(--offwhite);font-family:var(--font-body);font-size:12px;min-height:100vh;}
+
+/* ── HEADER ── */
+header{background:var(--black);border-bottom:3px solid var(--red);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1000;}
+.logo-wrap{display:flex;align-items:center;gap:14px;}
+.logo-s{width:36px;height:36px;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:var(--font-title);font-size:22px;font-weight:900;color:#fff;letter-spacing:-1px;}
+.logo-text{display:flex;flex-direction:column;line-height:1;}
+.logo-text .sekron{font-family:var(--font-title);font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;}
+.logo-text .digital{font-family:var(--font-title);font-size:11px;font-weight:400;color:var(--red);letter-spacing:4px;text-transform:uppercase;}
+.header-title{font-family:var(--font-title);font-size:14px;font-weight:600;color:var(--gray);letter-spacing:3px;text-transform:uppercase;}
+
+/* ── LAYOUT ── */
+.main{display:grid;grid-template-columns:320px 1fr;grid-template-rows:auto 1fr;height:calc(100vh - 61px);}
+.sidebar{background:#0d1f30;border-right:1px solid #1a3550;display:flex;flex-direction:column;overflow:hidden;}
+.map-area{position:relative;}
+
+/* ── SIDEBAR TABS ── */
+.tab-bar{display:flex;border-bottom:1px solid #1a3550;}
+.tab{flex:1;padding:10px 6px;text-align:center;font-family:var(--font-title);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--gray);border-bottom:3px solid transparent;transition:.2s;}
+.tab.active{color:var(--red);border-bottom-color:var(--red);}
+.tab-content{display:none;flex:1;overflow-y:auto;}
+.tab-content.active{display:flex;flex-direction:column;}
+
+/* ── INDICADORES ── */
+.kpi-section{padding:16px;}
+.kpi-section h3{font-family:var(--font-title);font-size:11px;font-weight:700;letter-spacing:3px;color:var(--red);text-transform:uppercase;margin-bottom:12px;}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.kpi{background:#0A1928;border:1px solid #1a3550;border-left:3px solid var(--red);padding:10px 12px;}
+.kpi.green{border-left-color:#4CAF50;}
+.kpi.gray{border-left-color:var(--gray);}
+.kpi.bordeaux{border-left-color:var(--bordeaux);}
+.kpi-val{font-family:var(--font-title);font-size:32px;font-weight:900;color:#fff;line-height:1;}
+.kpi-label{font-size:10px;color:var(--gray);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+.kpi-sub{font-size:9px;color:var(--ocre);margin-top:3px;}
+.divider{height:1px;background:#1a3550;margin:4px 0 12px;}
+.tipo-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #0d1f3a;}
+.tipo-row:last-child{border-bottom:none;}
+.tipo-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.tipo-count{font-family:var(--font-title);font-size:18px;font-weight:900;color:#fff;}
+.tipo-count span{font-size:11px;color:var(--gray);margin-left:4px;}
+
+/* UF ranking */
+.uf-list{padding:0 16px 16px;}
+.uf-list h3{font-family:var(--font-title);font-size:11px;font-weight:700;letter-spacing:3px;color:var(--red);text-transform:uppercase;margin-bottom:10px;}
+.uf-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.uf-bar-label{width:24px;font-size:10px;color:var(--offwhite);font-weight:700;}
+.uf-bar-wrap{flex:1;background:#0A1928;height:14px;position:relative;}
+.uf-bar-fill{height:100%;background:var(--red);transition:.4s;}
+.uf-bar-num{width:24px;text-align:right;font-size:10px;color:var(--gray);}
+
+/* ── FILTROS ── */
+.filter-section{padding:16px;flex:1;overflow-y:auto;}
+.filter-section h3{font-family:var(--font-title);font-size:11px;font-weight:700;letter-spacing:3px;color:var(--red);text-transform:uppercase;margin-bottom:12px;}
+.search-wrap{position:relative;margin-bottom:12px;}
+.search-wrap input{width:100%;background:#0A1928;border:1px solid #1a3550;color:var(--offwhite);padding:8px 10px 8px 32px;font-family:var(--font-body);font-size:11px;outline:none;transition:.2s;}
+.search-wrap input:focus{border-color:var(--red);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--gray);font-size:13px;}
+.filter-group{margin-bottom:14px;}
+.filter-label{font-size:10px;color:var(--gray);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.filter-label button{background:none;border:none;color:var(--red);cursor:pointer;font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.filter-select{width:100%;background:#0A1928;border:1px solid #1a3550;color:var(--offwhite);padding:7px 10px;font-family:var(--font-body);font-size:11px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;}
+.filter-select:focus{border-color:var(--red);}
+.multi-select{background:#0A1928;border:1px solid #1a3550;max-height:120px;overflow-y:auto;}
+.multi-opt{display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;font-size:11px;}
+.multi-opt:hover{background:#1a3550;}
+.multi-opt input[type=checkbox]{accent-color:var(--red);cursor:pointer;}
+.chip-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.chip{background:var(--bordeaux);color:#fff;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;}
+.chip:hover{background:var(--red);}
+.apply-btn{width:100%;background:var(--red);color:#fff;border:none;padding:10px;font-family:var(--font-title);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:.2s;margin-top:8px;}
+.apply-btn:hover{background:var(--bordeaux);}
+.reset-btn{width:100%;background:transparent;color:var(--gray);border:1px solid #1a3550;padding:7px;font-family:var(--font-title);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:.2s;margin-top:6px;}
+.reset-btn:hover{border-color:var(--red);color:var(--red);}
+.result-count{font-size:10px;color:var(--ocre);letter-spacing:1px;text-align:center;margin-top:8px;}
+
+/* ── MAPA ── */
+#map{width:100%;height:100%;}
+.map-overlay{position:absolute;top:12px;right:12px;z-index:900;display:flex;flex-direction:column;gap:8px;}
+.map-badge{background:rgba(255,255,255,.95);border:1px solid #cbd5e0;border-left:3px solid var(--red);box-shadow:0 2px 8px rgba(0,0,0,.15);padding:8px 12px;font-family:var(--font-title);}
+.map-badge .val{font-size:22px;font-weight:900;color:var(--black);}
+.map-badge .lbl{font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;}
+
+/* ── POPUP ── */
+.leaflet-popup-content-wrapper{background:var(--black)!important;border:2px solid var(--red)!important;border-radius:0!important;color:var(--offwhite)!important;box-shadow:0 4px 24px rgba(0,0,0,.8)!important;min-width:260px;}
+.leaflet-popup-tip{background:var(--red)!important;}
+.leaflet-popup-close-button{color:var(--gray)!important;font-size:18px!important;top:8px!important;right:10px!important;}
+.popup-header{background:var(--red);padding:10px 14px;margin:-1px -1px 0;display:flex;align-items:center;gap:10px;}
+.popup-header .ph-name{font-family:var(--font-title);font-size:16px;font-weight:900;color:#fff;letter-spacing:.5px;line-height:1.1;}
+.popup-header .ph-tipo{font-size:9px;color:rgba(255,255,255,.8);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.popup-body{padding:12px 14px;}
+.popup-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #1a3550;}
+.popup-row:last-child{border-bottom:none;}
+.popup-key{font-size:9px;color:var(--gray);letter-spacing:1.5px;text-transform:uppercase;min-width:50px;padding-top:1px;}
+.popup-val{font-size:11px;color:var(--offwhite);word-break:break-all;flex:1;}
+.copy-btn{background:none;border:1px solid #1a3550;color:var(--gray);padding:2px 6px;cursor:pointer;font-size:9px;letter-spacing:.5px;transition:.2s;margin-left:4px;white-space:nowrap;}
+.copy-btn:hover{border-color:var(--red);color:var(--red);}
+.copy-btn.copied{border-color:#4CAF50;color:#4CAF50;}
+.popup-copy-all{width:100%;margin-top:10px;background:var(--red);color:#fff;border:none;padding:8px;font-family:var(--font-title);font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;}
+.popup-copy-all:hover{background:var(--bordeaux);}
+.geo-warn{font-size:9px;color:var(--ocre);letter-spacing:.5px;margin-top:6px;display:flex;align-items:center;gap:4px;}
+.geo-warn::before{content:'⚠';font-size:10px;}
+.bases-list{margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;}
+.base-chip{background:#1a3550;color:var(--gray);padding:2px 5px;font-size:8px;letter-spacing:.5px;}
+
+/* ── MARKER custom ── */
+.mk-inst{background:var(--red);} .mk-base{background:#4CAF50;} .mk-ajud{background:#FF9800;}
+.mk-inst_base{background:#7030A0;} .mk-inst_ajud{background:#833C00;} .mk-base_ajud{background:#1F6B33;}
+.marker-dot{width:14px;height:14px;border-radius:50%;border:2px solid #fff;cursor:pointer;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.6);}
+.marker-dot:hover{transform:scale(1.5);}
+
+/* ── LEGENDA MAPA ── */
+.map-legend{position:absolute;bottom:30px;left:12px;z-index:900;background:rgba(255,255,255,.95);border:1px solid #cbd5e0;box-shadow:0 2px 8px rgba(0,0,0,.15);padding:10px 14px;}
+.map-legend h4{font-family:var(--font-title);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:8px;}
+.leg-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:10px;color:var(--black);}
+.leg-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);flex-shrink:0;}
+
+/* ── LISTA EMPRESAS ── */
+.tec-list{flex:1;overflow-y:auto;}
+.tec-item{padding:10px 16px;border-bottom:1px solid #0d1f3a;cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:10px;}
+.tec-item:hover{background:#1a3550;}
+.tec-item .tec-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.tec-info .tec-nome{font-size:11px;font-weight:700;color:var(--offwhite);line-height:1.3;}
+.tec-info .tec-meta{font-size:9px;color:var(--gray);margin-top:2px;}
+.tec-info .tec-tipo{font-size:9px;color:var(--ocre);text-transform:uppercase;letter-spacing:.5px;}
+.tec-count{font-size:10px;color:var(--gray);padding:8px 16px;border-bottom:1px solid #1a3550;letter-spacing:1px;}
+
+
+/* ── SEARCH RESULTS PANEL ── */
+.search-results{margin-top:8px;display:none;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto;}
+.search-results.visible{display:flex;}
+.sr-header{font-size:9px;color:var(--ocre);letter-spacing:2px;text-transform:uppercase;padding:4px 2px;}
+.sr-card{background:#0A1928;border:1px solid #1a3550;border-left:3px solid var(--red);padding:10px 12px;cursor:pointer;transition:.15s;}
+.sr-card:hover{background:#1a3550;border-left-color:var(--ocre);}
+.sr-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.sr-nome{font-family:var(--font-title);font-size:14px;font-weight:700;color:#fff;line-height:1.2;}
+.sr-tipo-badge{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap;flex-shrink:0;}
+.sr-fields{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;}
+.sr-field{display:flex;flex-direction:column;gap:1px;}
+.sr-field-key{font-size:8px;color:var(--gray);letter-spacing:1.5px;text-transform:uppercase;}
+.sr-field-val{font-size:10px;color:var(--offwhite);display:flex;align-items:center;gap:4px;}
+.sr-copy{background:none;border:none;color:var(--gray);cursor:pointer;font-size:9px;padding:0;line-height:1;transition:.15s;}
+.sr-copy:hover{color:var(--red);}
+.sr-copy.ok{color:#4CAF50;}
+.sr-loc{font-size:9px;color:var(--gray);margin-top:5px;padding-top:5px;border-top:1px solid #1a3550;}
+.sr-bases{margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;}
+.sr-base-tag{background:#1a3550;color:var(--gray);padding:1px 5px;font-size:8px;letter-spacing:.3px;}
+.sr-focus-btn{width:100%;margin-top:6px;background:transparent;border:1px solid #1a3550;color:var(--gray);padding:4px;font-family:var(--font-title);font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:.15s;text-transform:uppercase;}
+.sr-focus-btn:hover{border-color:var(--red);color:var(--red);}
+.sr-empty{font-size:11px;color:var(--gray);padding:12px;text-align:center;border:1px dashed #1a3550;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:#0A1928;}
+::-webkit-scrollbar-thumb{background:var(--bordeaux);}
+.tech-marker:hover{transform:scale(1.25);}.tech-icon{background:transparent !important;border:none !important;}</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-s">S</div>
+    <div class="logo-text">
+      <span class="sekron">SEKRON</span>
+      <span class="digital">DIGITAL</span>
+    </div>
+  </div>
+  <div class="header-title">Painel de Empresas Credenciadas — 2026</div>
+</header>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('indicadores')">INDICADORES</div>
+      <div class="tab" onclick="switchTab('filtros')">FILTROS</div>
+      <div class="tab" onclick="switchTab('lista')">LISTA</div>
+    </div>
+
+    <!-- TAB: INDICADORES -->
+    <div class="tab-content active" id="tab-indicadores">
+      <div class="kpi-section">
+        <h3>Visão Geral</h3>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="kpi-val" id="kpi-total">—</div><div class="kpi-label">Total Empresas</div></div>
+          <div class="kpi green"><div class="kpi-val" id="kpi-ativos">—</div><div class="kpi-label">Ativas</div></div>
+          <div class="kpi gray"><div class="kpi-val" id="kpi-inativos">—</div><div class="kpi-label">Inativas</div></div>
+          <div class="kpi bordeaux"><div class="kpi-val" id="kpi-ufs">—</div><div class="kpi-label">UFs Cobertas</div></div>
+        </div>
+        <h3>Por Tipo</h3>
+        <div id="tipo-breakdown"></div>
+        <div class="divider"></div>
+        <h3 style="margin-top:8px">Cobertura</h3>
+        <div style="font-size:11px;color:var(--offwhite);margin-top:4px">
+          <span id="kpi-cobertura" style="font-family:var(--font-title);font-size:28px;font-weight:900;color:var(--red);">—</span>
+          <span style="color:var(--gray);font-size:10px"> % das UFs com empresa credenciada ativa</span>
+        </div>
+      </div>
+      <div class="uf-list">
+        <h3>Top UFs — Empresas Ativas</h3>
+        <div id="uf-ranking"></div>
+      </div>
+    </div>
+
+    <!-- TAB: FILTROS -->
+    <div class="tab-content" id="tab-filtros">
+      <div class="filter-section">
+        <h3>Busca e Filtros</h3>
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Buscar por nome, município, UF..." oninput="applyFilters()"/>
+        </div>
+        <div class="search-results" id="search-results-panel"></div>
+
+        <div class="filter-group">
+          <div class="filter-label">
+            UF
+            <button onclick="clearFilter('uf')">Limpar</button>
+          </div>
+          <div class="multi-select" id="ms-uf"></div>
+          <div class="chip-wrap" id="chips-uf"></div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">
+            Município
+            <button onclick="clearFilter('mun')">Limpar</button>
+          </div>
+          <div class="multi-select" id="ms-mun" style="max-height:100px;"></div>
+          <div class="chip-wrap" id="chips-mun"></div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">
+            Base
+            <button onclick="clearFilter('base')">Limpar</button>
+          </div>
+          <div class="multi-select" id="ms-base" style="max-height:100px;"></div>
+          <div class="chip-wrap" id="chips-base"></div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Tipo</div>
+          <select id="filter-tipo" class="filter-select" onchange="applyFilters()">
+            <option value="">Todos os tipos</option>
+            <option value="INSTALADOR">Instalador</option>
+            <option value="BASE TÉCNICA">Base Técnica</option>
+            <option value="AJUDANTE">Ajudante</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Status</div>
+          <select id="filter-status" class="filter-select" onchange="applyFilters()">
+            <option value="ATIVO">Somente Ativas</option>
+            <option value="">Todos</option>
+            <option value="INATIVO">Somente Inativas</option>
+          </select>
+        </div>
+
+        <button class="reset-btn" onclick="resetFilters()">↺ LIMPAR TODOS OS FILTROS</button>
+        <div class="result-count" id="result-count"></div>
+      </div>
+    </div>
+
+    <!-- TAB: LISTA -->
+    <div class="tab-content" id="tab-lista">
+      <div class="tec-count" id="lista-count"></div>
+      <div class="tec-list" id="tec-list"></div>
+    </div>
+  </div>
+
+  <!-- MAPA -->
+  <div class="map-area">
+    <div id="map"></div>
+    <div class="map-overlay">
+      <div class="map-badge">
+        <div class="val" id="map-count">—</div>
+        <div class="lbl">No mapa</div>
+      </div>
+    </div>
+    <div class="map-legend">
+      <h4>Tipo de Empresa</h4>
+      <div class="leg-row"><div class="leg-dot" style="background:var(--red)"></div>Instalador</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#4CAF50"></div>Base Técnica</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#FF9800"></div>Ajudante</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Dados embutidos ──────────────────────────────────────────────────────────
+const RAWDATA = [{"nome":"Alessandro","tipo":"AVULSO","status":"ATIVO","uf":"PA","municipio":"MARABÁ","telefone":"AGENDAR COM KATIANE","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Marabá PA (Técnico Avulso)"],"lat":-5.3685,"lng":-49.1178,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Alexandre Wandrew","tipo":"INSTALADOR","status":"ATIVO","uf":"PA","municipio":"BELÉM","telefone":"(91) 9806-4364","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Belem PA"],"lat":-1.4558,"lng":-48.5039,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Allan Nascimento de Carvalho","tipo":"INSTALADOR","status":"ATIVO","uf":"TO","municipio":"PALMAS","telefone":"(63) 99202-1613","cpf":"057.584.151-62","rg":"1107371","cnpj":"65.632.074/0001-96","equipe":"","bases":["Palmas/TO"],"lat":-10.2491,"lng":-48.3197,"geo_status":"bairro_match","logradouro":"1106 Sul AL 24 Lt 02, Nº Sn, Colégio Criativo","bairro":"PLANO DIRETOR SUL","cep":"77024-086"},{"nome":"Antonio Delmiro dos Santos Neto","tipo":"INSTALADOR","status":"INATIVO","uf":"PB","municipio":"CAMPINA GRANDE","telefone":"(83) 98833-5844 / (83) 2148-3117","cpf":"038.407.124-40","rg":"2485426","cnpj":"","equipe":"","bases":["Campina Grande PB"],"lat":-7.2291,"lng":-35.8811,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Antonio Valdiney Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"CE","municipio":"FORTALEZA","telefone":"(85) 98553-6592","cpf":"640.040.743-04","rg":"94.017.011-6","cnpj":"","equipe":"","bases":["Técnico Fortaleza"],"lat":-3.7319,"lng":-38.5267,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"60346-195"},{"nome":"Armando Marcio Lopes","tipo":"INSTALADOR","status":"ATIVO","uf":"AC","municipio":"RIO BRANCO","telefone":"(68) 99949-5185","cpf":"023.353.507-14","rg":"02.335.350-7","cnpj":"","equipe":"","bases":["Rio Branco/AC"],"lat":-9.9754,"lng":-67.8249,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Armando Mendonça Tavares","tipo":"INSTALADOR","status":"ATIVO","uf":"PA","municipio":"BELÉM","telefone":"(91) 98228-2441","cpf":"815.361.602-10","rg":"3540805","cnpj":"20.492.541/0001-91","equipe":"","bases":["Instalador Pará"],"lat":-1.3872,"lng":-48.4683,"geo_status":"bairro_match","logradouro":"Passagem José de Alencar, Nº 328, Casa","bairro":"MARAMBAIA","cep":"66620-620"},{"nome":"Bruno Madson Araujo Correa","tipo":"INSTALADOR","status":"ATIVO","uf":"PA","municipio":"SANTARÉM","telefone":"(93) 99104-1207","cpf":"911.576.172-04","rg":"5667944","cnpj":"","equipe":"","bases":["Santarém/PA"],"lat":-2.4431,"lng":-54.7083,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Cristian Soares (Janayna Cavalcante)","tipo":"INSTALADOR","status":"ATIVO","uf":"AC","municipio":"RIO BRANCO","telefone":"(68) 98425-2309","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Rio Branco/AC"],"lat":-9.9754,"lng":-67.8249,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Davi Fernandes","tipo":"INSTALADOR","status":"ATIVO","uf":"RN","municipio":"CAMPO REDONDO","telefone":"(84) 99694-4457 / (84) 99229-0727","cpf":"017.152.564-76","rg":"07.308.562-2","cnpj":"34.733.826/0001-81","equipe":"","bases":["Natal-RN"],"lat":-5.7945,"lng":-35.211,"geo_status":"cep_match","logradouro":"Rua Dr Pedro Medeiros, Nº 57","bairro":"CENTRO","cep":"59230-000"},{"nome":"Edmar Lemes Garcia","tipo":"INSTALADOR","status":"ATIVO","uf":"TO","municipio":"PALMAS","telefone":"(63) 99229-1339","cpf":"510.561.001-68","rg":"1674674","cnpj":"23.012.128/0001-70","equipe":"","bases":["Palmas TO"],"lat":-10.2491,"lng":-48.3197,"geo_status":"bairro_match","logradouro":"712 Sul Alameda 8, Nº 0, Qi 9 Lote 45/51 Casa 01","bairro":"PLANO DIRETOR SUL","cep":"77022-438"},{"nome":"Elivaldo Junior Monteiro Duarte","tipo":"INSTALADOR","status":"ATIVO","uf":"PA","municipio":"BELÉM","telefone":"(09) 13241-9111","cpf":"652.283.242-91","rg":"3047432","cnpj":"","equipe":"","bases":["Manutenção Pará"],"lat":-1.378,"lng":-48.4459,"geo_status":"bairro_match","logradouro":"Passagem Marajoara Um, Nº 351","bairro":"MARACANGALHA","cep":"66110-270"},{"nome":"Erikson Paula dos Reis","tipo":"INSTALADOR","status":"ATIVO","uf":"PA","municipio":"BELÉM","telefone":"(91) 98744-9210","cpf":"685.034.742-04","rg":"3260660","cnpj":"","equipe":"","bases":["Manutenção Pará"],"lat":-1.4558,"lng":-48.5039,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"66650-404"},{"nome":"Francisco Alisson Henrique Souza Neves","tipo":"INSTALADOR","status":"ATIVO","uf":"RO","municipio":"PORTO VELHO","telefone":"(69) 9845-5279","cpf":"","rg":"1136196","cnpj":"61.683.613/0001-65","equipe":"","bases":["Base Tecnica - (Am,ac,ro,rr) Norte"],"lat":-8.7831,"lng":-63.8754,"geo_status":"bairro_match","logradouro":"Rua Gustavo Moura, Nº 3518","bairro":"TANCREDO NEVES","cep":"76829-494"},{"nome":"Francisco Cleiton Magalhães Lopes","tipo":"INSTALADOR","status":"ATIVO","uf":"CE","municipio":"FORTALEZA","telefone":"(85) 98806-1392","cpf":"370.069.593-49","rg":"20.151.113-2","cnpj":"","equipe":"","bases":["Fortaleza"],"lat":-3.8021,"lng":-38.5583,"geo_status":"bairro_match","logradouro":"Rua Américo Rocha Lima, Nº 1150","bairro":"VILA MANUEL SÁTIRO","cep":"60730-240"},{"nome":"Gian Vanderson da Silva Lima","tipo":"INSTALADOR","status":"ATIVO","uf":"PB","municipio":"JOÃO PESSOA","telefone":"(08) 34106-2553 / (83) 98601-1215","cpf":"099.347.944-89","rg":"3701907","cnpj":"","equipe":"","bases":["Paraíba"],"lat":-7.1195,"lng":-34.845,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"58040-102"},{"nome":"Idelvan Ribeiro da Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"PI","municipio":"TERESINA","telefone":"(86) 98889-9229","cpf":"837.880.823-53","rg":"1116079","cnpj":"23.901.076/0001-93","equipe":"","bases":["Teresina/PI"],"lat":-5.0842,"lng":-42.8081,"geo_status":"bairro_match","logradouro":"Rua Engenheiro Barradas Filho, Q 35 C 19, Nº 35, Casa 19","bairro":"SANTO ANTÕNIO","cep":"64036-480"},{"nome":"Lacerda Rodrigues de Meneses","tipo":"INSTALADOR","status":"ATIVO","uf":"PA","municipio":"BELÉM","telefone":"(91) 98872-0930","cpf":"686.523.482-00","rg":"4233528","cnpj":"","equipe":"","bases":["Instalador Pará"],"lat":-1.4558,"lng":-48.5039,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Lhueston Rocha","tipo":"INSTALADOR","status":"ATIVO","uf":"TO","municipio":"ARAGUAINA","telefone":"(63) 99113-5133","cpf":"048.941.531-81","rg":"1116846","cnpj":"","equipe":"","bases":["Araguaina TO"],"lat":-7.1906,"lng":-48.2044,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Manoel Ronildo Torquato da Silva","tipo":"AJUDANTE","status":"ATIVO","uf":"RO","municipio":"PORTO VELHO","telefone":"AGENDAR COM FRANCISCO ALISSON","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Base Tecnica - (Am,ac,ro,rr) Norte"],"lat":-8.7831,"lng":-63.8754,"geo_status":"bairro_match","logradouro":"","bairro":"TANCREDO NEVES","cep":"76829-494"},{"nome":"Railson Sales Gomes Ylear","tipo":"INSTALADOR","status":"ATIVO","uf":"PI","municipio":"TERESINA","telefone":"(86) 99456-6688","cpf":"045.557.573-86","rg":"3055285","cnpj":"","equipe":"","bases":["Teresina/PI"],"lat":-5.0892,"lng":-42.8019,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"64010-390"},{"nome":"Ricardo Jose da Silva Barbosa","tipo":"INSTALADOR","status":"ATIVO","uf":"CE","municipio":"FORTALEZA","telefone":"(85) 99654-8656","cpf":"600.014.823-27","rg":"20.020.103-0","cnpj":"34.697.600/0001-72","equipe":"","bases":["Inst/Manut Ceará"],"lat":-3.8206,"lng":-38.5355,"geo_status":"bairro_match","logradouro":"Rua 307 N 390, Conjunto Sao Cristovão, Nº 390","bairro":"JANGURUSSU","cep":"60866-340"},{"nome":"Ruan Cristian","tipo":"AVULSO","status":"ATIVO","uf":"AP","municipio":"MACAPÁ","telefone":"AGENDAR COM KATIANE","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Macapá (Técnico Avulso)"],"lat":0.0349,"lng":-51.0694,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Samuel Freire da Silva de Oliveira","tipo":"INSTALADOR","status":"ATIVO","uf":"AM","municipio":"MANAUS","telefone":"(92) 98490-7404","cpf":"","rg":"3.283.517-5","cnpj":"27.071.153/0001-86","equipe":"","bases":["Amazonas"],"lat":-3.1022,"lng":-60.0361,"geo_status":"bairro_match","logradouro":"Beco Santa Helena, Nº 10, Avenida Brasil","bairro":"SÃO JORGE","cep":"69033-650"},{"nome":"Yuri Kelvin Cândido Moraes de Lucena","tipo":"INSTALADOR","status":"ATIVO","uf":"PB","municipio":"CAMPINA GRANDE","telefone":"(83) 98129-8114","cpf":"061.653.414-03","rg":"3402262","cnpj":"24.695.384/0001-72","equipe":"","bases":["Campina Grande PB"],"lat":-7.2291,"lng":-35.8811,"geo_status":"cep_match","logradouro":"Rua: Joaquim da Silva Zeca, Nº 707","bairro":"MONTE CASTELO","cep":"58434-500"},{"nome":"Thiago Cardoso Rezende","tipo":"INSTALADOR","status":"ATIVO","uf":"CE","municipio":"FORTALEZA","telefone":"(85) 98217-8154","cpf":"386.039.448-73","rg":"63.898.538-9","cnpj":"54.622.168/0001-68","equipe":"","bases":["Fortaleza"],"lat":-3.7789,"lng":-38.4678,"geo_status":"bairro_match","logradouro":"Av. Clóvis Matos, Nº 31","bairro":"VICENTE PIZON","cep":"60182-250"},{"nome":"Walfrido Osidio Neto","tipo":"INSTALADOR","status":"ATIVO","uf":"RO","municipio":"PORTO VELHO","telefone":"(69) 9987-3607","cpf":"","rg":"","cnpj":"11.520.838/0001-22","equipe":"","bases":["Porto Velho"],"lat":-8.7598,"lng":-63.8489,"geo_status":"bairro_match","logradouro":"Rua Mirador, Nº 2178, Casa","bairro":"CASTANHEIRA","cep":"76811-382"},{"nome":"Anderson Reateque de Oliveira (Vilhena)","tipo":"INSTALADOR","status":"INATIVO","uf":"RO","municipio":"VILHENA","telefone":"(69) 98444-1610","cpf":"826.646.842-72","rg":"862513","cnpj":"","equipe":"","bases":["Vilhena"],"lat":-12.7406,"lng":-60.1461,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Cristiano Dolisni Pinto","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO JOSÉ DOS CAMPOS","telefone":"(12) 97401-8443","cpf":"","rg":"5.242.378-9X","cnpj":"","equipe":"","bases":["Base Guaratingueta/Sjc"],"lat":-23.1791,"lng":-45.8872,"geo_status":"corrected","logradouro":"","bairro":"","cep":"12227-801"},{"nome":"Cristoffer Gama do Nascimento","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"TAUBATÉ","telefone":"(12) 99155-1278","cpf":"376.720.418-51","rg":"44.491.977-6","cnpj":"","equipe":"","bases":["Taubaté SP"],"lat":-23.0261,"lng":-45.5553,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"David Francisco da Guia Junior","tipo":"INSTALADOR","status":"ATIVO","uf":"MT","municipio":"CUIABÁ","telefone":"(65) 98416-3724 / (65) 3056-3638","cpf":"698.002.861-87","rg":"1.237.189-0","cnpj":"46.986.599/0001-85","equipe":"","bases":["Base Cuiaba"],"lat":-15.6717,"lng":-56.1186,"geo_status":"bairro_match","logradouro":"Rua Quatrocentos e Vinte, Nº 4, Setor 4","bairro":"TIJUCAL","cep":"78088-456"},{"nome":"Diego","tipo":"INSTALADOR","status":"ATIVO","uf":"MT","municipio":"ALTA FLORESTA","telefone":"","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Alta Floresta (Técnico Avulso)"],"lat":-9.8756,"lng":-56.0858,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Edilson (Uti do Micro)","tipo":"INSTALADOR","status":"ATIVO","uf":"MS","municipio":"CAMPO GRANDE","telefone":"(67) 9115-0761","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Base Campo Grande"],"lat":-20.4697,"lng":-54.6201,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Joao Roberto Ferreira do Carmo","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO BERNARDO DO CAMPO","telefone":"(11) 97671-4662","cpf":"155.977.388-92","rg":"1.877.789-7","cnpj":"","equipe":"","bases":["Apoio Abc"],"lat":-23.6939,"lng":-46.565,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"José Eduardo Santos/luciano Santos","tipo":"INSTALADOR","status":"ATIVO","uf":"SE","municipio":"SERGIPE","telefone":"(79) 99916-3291","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Sergipe"],"lat":-10.9472,"lng":-37.0731,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Luciano Guerra de Sena","tipo":"INSTALADOR","status":"ATIVO","uf":"AL","municipio":"MACEIÓ","telefone":"(82) 98847-1288","cpf":"018.485.704-06","rg":"RG 121788","cnpj":"","equipe":"","bases":["Maceio-AL"],"lat":-9.6658,"lng":-35.7353,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Mizael Leonel Pereira","tipo":"INSTALADOR","status":"ATIVO","uf":"AL","municipio":"PARANATAMA","telefone":"(87) 98129-7765","cpf":"711.227.124-05","rg":"1.015.734-6","cnpj":"","equipe":"","bases":["Interior Pernambuco/Alagoas"],"lat":-8.9228,"lng":-36.6597,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Osvaldo Alves de Araujo Junior","tipo":"INSTALADOR","status":"ATIVO","uf":"MT","municipio":"VARZEA GRANDE","telefone":"(65) 8115-9853","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Varzea Grande MT"],"lat":-15.6469,"lng":-56.1326,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Tiago Andrei Fortes Buzanello","tipo":"INSTALADOR","status":"ATIVO","uf":"SC","municipio":"SÃO JOSÉ","telefone":"(48) 98818-3232","cpf":"016.285.540-02","rg":"6197837","cnpj":"","equipe":"","bases":["São José"],"lat":-27.6121,"lng":-48.6359,"geo_status":"corrected","logradouro":"","bairro":"","cep":"88115-200"},{"nome":"Jefferson Rodrigues da Cunha","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"PINDAMONHANGABA","telefone":"(11) 98199-0042 / (12) 3527-6185","cpf":"339.224.528-33","rg":"41.154.419-6","cnpj":"","equipe":"","bases":["Pindamonhangaba"],"lat":-22.9236,"lng":-45.4622,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Jose Higor Vargas Martins","tipo":"INSTALADOR","status":"ATIVO","uf":"SC","municipio":"SÃO JOSE","telefone":"(48) 99105-9654","cpf":"037.572.620-93","rg":"11.120.585-3","cnpj":"","equipe":"","bases":["São Jose"],"lat":-27.6121,"lng":-48.6359,"geo_status":"corrected","logradouro":"","bairro":"","cep":"88115-200"},{"nome":"Edilson Monteiro de Souza","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ITAQUERA","telefone":"(11) 98026-3104","cpf":"320.603.958-44","rg":"40.589.100-3","cnpj":"","equipe":"","bases":["Base Corporativos Gde Porte"],"lat":-23.5389,"lng":-46.4338,"geo_status":"corrected","logradouro":"","bairro":"","cep":"08295-300"},{"nome":"Rafael Dinamon Germin","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"GUARULHOS","telefone":"(11) 9991-7917","cpf":"280.684.888-12","rg":"24.871.330-9","cnpj":"34.950.227/0001-10","equipe":"","bases":["Base Carrefour Hiper / Atacadão / Safra"],"lat":-23.4822,"lng":-46.6625,"geo_status":"cep_match","logradouro":"Avenida Jose Brumatti, Nº 2500, Bloco C Casa 01","bairro":"JARDIM SANTO EXPEDITO","cep":"07160-170"},{"nome":"Sidnei Sinédrio Mascarenha de Souza","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 4138-1141 / (11) 99608-9803","cpf":"176.985.718-40","rg":"2.397.922-1X","cnpj":"31.915.711/0001-10","equipe":"","bases":["Base Carrefour Express / Confidence"],"lat":-23.5088,"lng":-46.6042,"geo_status":"bairro_match","logradouro":"Rua Eugênio de Freitas, Nº 356, Apto 54 Bloco 2","bairro":"VILA GUILHERME","cep":"02060-000"},{"nome":"Carlos Alberto Ferrara Morais","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"MOGI DAS CRUZES","telefone":"(11) 97572-3987 / (11) 95426-8736","cpf":"175.161.118-30","rg":"26.205.513-2","cnpj":"","equipe":"","bases":["Base Mogi das Cruzes SP"],"lat":-23.5237,"lng":-46.1857,"geo_status":"corrected","logradouro":"","bairro":"","cep":"08742-440"},{"nome":"Cleyson Alves Gonçalves","tipo":"INSTALADOR","status":"ATIVO","uf":"MT","municipio":"LUCAS DO RIO VERDE","telefone":"(69) 99301-1562","cpf":"014.311.982-69","rg":"1155059","cnpj":"","equipe":"","bases":["Lucas do Rio Verde"],"lat":-13.0588,"lng":-55.9111,"geo_status":"corrected","logradouro":"","bairro":"","cep":""},{"nome":"Roberto Orsolon Bragion","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 92091-5433","cpf":"220.561.708-76","rg":"22.639.196-6","cnpj":"","equipe":"","bases":["São Paulo (Instalador)"],"lat":-23.4793,"lng":-46.7408,"geo_status":"bairro_match","logradouro":"","bairro":"PIRITUBA","cep":""},{"nome":"Ivo Norberto Ferreira","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"PIRACICABA","telefone":"(11) 98205-4898","cpf":"269.009.518-13","rg":"24.416.835-0","cnpj":"43.276.299/0001-14","equipe":"","bases":["São Paulo (Instalador)"],"lat":-22.7253,"lng":-47.6492,"geo_status":"corrected","logradouro":"Rua Eldorado Paulista, Nº 208","bairro":"JARDIM SOL NASCENTE","cep":"13425-806"},{"nome":"Cláudio Gabriel Azevedo de Souza","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SUZANO","telefone":"(11) 91592-4819 / (11) 94764-1023","cpf":"524.927.138-30","rg":"57.250.728-8","cnpj":"51.864.113/0001-76","equipe":"","bases":["Suzano/Mogi das Cruzes"],"lat":-23.5425,"lng":-46.3139,"geo_status":"corrected","logradouro":"Rua Cláudio José de Souza, Nº 65, Casa","bairro":"JARDIM BELA VISTA","cep":"08613-085"},{"nome":"Felipe Rodrigues Castilho Macedo (SP)","tipo":"INSTALADOR","status":"INATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 99251-7566 / (11) 98541-5487","cpf":"387.859.538-73","rg":"49.301.485-8","cnpj":"","equipe":"","bases":["São Paulo (Instalador)"],"lat":-23.5505,"lng":-46.6333,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"José Roberto Souza","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 91323-6593","cpf":"332.335.618-73","rg":"34.086.644-5","cnpj":"64.742.177/0001-46","equipe":"","bases":["São Paulo (Instalador)"],"lat":-23.54,"lng":-46.765,"geo_status":"bairro_match","logradouro":"Rafael Armenise Número 3666, Nº 3666, Casa 2","bairro":"VILA SULINA","cep":"05264-030"},{"nome":"Agnaldo Joaquim de Jesus","tipo":"INSTALADOR","status":"ATIVO","uf":"BA","municipio":"VITÓRIA DA CONQUISTA","telefone":"(77) 99952-1871","cpf":"674.746.755-87","rg":"05.258.073-0","cnpj":"36.455.439/0001-56","equipe":"","bases":["Vitória da Conquista"],"lat":-14.8659,"lng":-40.8442,"geo_status":"corrected","logradouro":"Av.niteroi, Nº 40","bairro":"ZABELÊ","cep":"45077-684"},{"nome":"Alexandre Ferreira da Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"PE","municipio":"RECIFE NORTE","telefone":"(81) 8761-9710 / (81) 9961-6886","cpf":"794.208.424-87","rg":"4291804","cnpj":"","equipe":"","bases":["Recife Norte"],"lat":-8.0476,"lng":-34.877,"geo_status":"corrected","logradouro":"","bairro":"","cep":"83823-040"},{"nome":"Andre Luis Teixeira Lucio","tipo":"INSTALADOR","status":"ATIVO","uf":"PE","municipio":"RECIFE NORTE","telefone":"AGENDAR COM ALEXANDRE SENA","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Recife Sul/Norte"],"lat":-8.0476,"lng":-34.877,"geo_status":"city_match","logradouro":"","bairro":"ZUMBI","cep":""},{"nome":"Jandir Cordeiro de Sousa","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"(61) 3351-8185 / (61) 98487-8588","cpf":"874.499.191-68","rg":"1593775","cnpj":"29.441.975/0001-37","equipe":"","bases":["Brasilia (Instalador)"],"lat":-15.8159,"lng":-48.0625,"geo_status":"bairro_match","logradouro":"Qnl 28 Via 30 Casa, Nº 10","bairro":"TAGUATINGA NORTE","cep":"72161-830"},{"nome":"Andre William Barros de Souza","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"(61) 99405-7031","cpf":"037.102.671-70","rg":"2919823","cnpj":"","equipe":"","bases":["Brasilia (Instalador)"],"lat":-15.7942,"lng":-47.8822,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Antonio Aparecido Ursino da Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"BETIM","telefone":"(31) 8636-4524 / (31) 9919-1069","cpf":"027.450.136-88","rg":"8005934","cnpj":"02.564.360/0001-41","equipe":"","bases":["Base Belo Horizonte"],"lat":-19.9675,"lng":-44.1983,"geo_status":"corrected","logradouro":"Rua Camelia, Nº 290, Casa","bairro":"JARDIM DAS ALTEROSAS - 2ª SEÇÃO","cep":"32673-130"},{"nome":"Breno Adrian Pereira Morbeli","tipo":"INSTALADOR","status":"ATIVO","uf":"ES","municipio":"VILA VELHA","telefone":"(27) 99624-9166","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Vila Velha ES"],"lat":-20.3297,"lng":-40.2925,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Alvaro Daldegan","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"(61) 8442-0979","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Brasilia (Instalador)"],"lat":-15.7942,"lng":-47.8822,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Caio Mallone Oliveira Dias","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"(61) 99890-4646","cpf":"074.803.791-88","rg":"3796227","cnpj":"","equipe":"","bases":["Brasilia (Instalador)"],"lat":-15.7942,"lng":-47.8822,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Francisco Lima de Assis","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"(61) 99266-9157","cpf":"038.804.391-17","rg":"2595475","cnpj":"","equipe":"","bases":["Brasilia (Instalador)"],"lat":-15.8977,"lng":-47.7812,"geo_status":"bairro_match","logradouro":"","bairro":"SÃO SEBASTIÃO","cep":""},{"nome":"Eder de Cassio Rodriges Dias","tipo":"INSTALADOR","status":"ATIVO","uf":"GO","municipio":"GOIANIA","telefone":"(62) 99333-7255 / (62) 9933-7256","cpf":"985.951.721-53","rg":"3842608","cnpj":"","equipe":"","bases":["Goiania GO"],"lat":-16.6869,"lng":-49.2648,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Edivan Rodrigues","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASILIA","telefone":"AGENDAR COM BRUNO DOS SANTOS SALES","cpf":"","rg":"","cnpj":"39.240.673/0001-54","equipe":"","bases":["Aguas Lindas"],"lat":-15.8149,"lng":-47.9069,"geo_status":"bairro_match","logradouro":"Shcs Qd 502 Bloco C, Nº 37, Parte 2063","bairro":"ASA SUL","cep":"70330-530"},{"nome":"Erick de Oliveira Cavalcanti (PE)","tipo":"INSTALADOR","status":"ATIVO","uf":"PE","municipio":"RECIFE NORTE","telefone":"(81) 99888-8418","cpf":"033.725.264-57","rg":"4952160","cnpj":"","equipe":"","bases":["Recife Sul/Norte"],"lat":-8.0476,"lng":-34.877,"geo_status":"city_match","logradouro":"","bairro":"ZUMBI","cep":""},{"nome":"Filipe Siqueira de Sousa Melo (Bl Tecnologia)","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"AGENDAR COM BRUNO DOS SANTOS SALES","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Brasilia (Instalador)"],"lat":-15.7942,"lng":-47.8822,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Francisco Gleison Crisante","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"(61) 98333-3017","cpf":"070.056.033-54","rg":"04.840.388-2","cnpj":"39.240.673/0001-54","equipe":"","bases":["Goiania (Instalador)"],"lat":-15.8149,"lng":-47.9069,"geo_status":"bairro_match","logradouro":"Shcs Qd 502 Bl C, Nº 37, Parte 2063","bairro":"ASA SUL","cep":"70330-530"},{"nome":"Gracirlei Eustaquio Ribeiro","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"BELO HORIZONTE","telefone":"(31) 8502-7020","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Belo Horizonte MG"],"lat":-19.9167,"lng":-43.9345,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Guilherme Stiebler Vieira Junior","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"JUIZ DE FORA","telefone":"(32) 98804-3205","cpf":"058.202.366-10","rg":"1.150.338-9","cnpj":"40.698.916/0001-81","equipe":"","bases":["Juiz de Fora-MG"],"lat":-21.7641,"lng":-43.3496,"geo_status":"corrected","logradouro":"Av Presidente Costa e Silva, Nº 1627","bairro":"SÃO PEDRO","cep":"36037-000"},{"nome":"Hugo Henrique Ramos de Brito","tipo":"INSTALADOR","status":"ATIVO","uf":"PE","municipio":"RECIFE","telefone":"(81) 99158-9358","cpf":"090.719.684-56","rg":"8177168","cnpj":"","equipe":"","bases":["Recife Sul/Norte"],"lat":-8.0456,"lng":-34.9067,"geo_status":"bairro_match","logradouro":"","bairro":"ZUMBI","cep":""},{"nome":"Irineu Flavio de Medeiros","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"UBERLANDIA","telefone":"(34) 99897-6969","cpf":"048.999.156-40","rg":"987 175","cnpj":"","equipe":"","bases":["Uberlandia/MG"],"lat":-18.9186,"lng":-48.2772,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Leonardo Barbosa dos Santos","tipo":"INSTALADOR","status":"ATIVO","uf":"BA","municipio":"SALVADOR","telefone":"(71) 99922-3657 / (71) 3019-3657","cpf":"792.894.015-91","rg":"07.538.316-0","cnpj":"28.253.503/0001-98","equipe":"","bases":["Bahia"],"lat":-12.9317,"lng":-38.4417,"geo_status":"bairro_match","logradouro":"Avenida Ulisses Guimarães 398, Nº 398, Cond.parque do Sossego","bairro":"SUSSUARANA","cep":"41213-000"},{"nome":"Luis Augusto de Miranda","tipo":"INSTALADOR","status":"ATIVO","uf":"ES","municipio":"VITÓRIA","telefone":"(27) 98114-7620 / (27) 3062-1165","cpf":"915.853.687-68","rg":"91737","cnpj":"","equipe":"","bases":["Base Vitoria"],"lat":-20.3155,"lng":-40.3128,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"29120-025"},{"nome":"Moises Gomes de Souto","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASÍLIA","telefone":"(61) 98491-3141","cpf":"014.614.711-17","rg":"2425653","cnpj":"","equipe":"","bases":["Via Varejo DF & GO"],"lat":-15.8432,"lng":-48.0585,"geo_status":"bairro_match","logradouro":"","bairro":"TAGUATINGA SUL","cep":""},{"nome":"Paulo Henrique Guimaraes Luiz","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"MONTES CLAROS","telefone":"(38) 99838-5281","cpf":"082.548.406-52","rg":"1.707.501-4","cnpj":"","equipe":"","bases":["Montes Claros-MG"],"lat":-16.7286,"lng":-43.8619,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Pedro Gabriel Vicente da Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"BELO HORIZONTE","telefone":"(31) 99254-5338","cpf":"014.985.146-42","rg":"1.318.714-5","cnpj":"","equipe":"","bases":["Dpsp/Vv Minas Gerais"],"lat":-19.9167,"lng":-43.9345,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Pericles Ferreira dos Santos","tipo":"INSTALADOR","status":"ATIVO","uf":"BA","municipio":"FEIRA DE SANTANA","telefone":"(75) 98102-6200","cpf":"233.508.225-68","rg":"14.167.077-0","cnpj":"","equipe":"","bases":["Feira de Santana/BA"],"lat":-12.2664,"lng":-38.9664,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Rodolfo Silva Miguel","tipo":"INSTALADOR","status":"ATIVO","uf":"ES","municipio":"VILA VELHA","telefone":"(27) 99903-2163","cpf":"065.639.846-90","rg":"1340277","cnpj":"59.014.534/0001-10","equipe":"","bases":["Instalador Vitória"],"lat":-20.3155,"lng":-40.3128,"geo_status":"cep_match","logradouro":"Rua Sete, Nº 3, Porta de Aço Vermelho e Branco - em Cima do Bar do Brás","bairro":"COCAL","cep":"29105-770"},{"nome":"Rodrigo Gomes","tipo":"AVULSO","status":"ATIVO","uf":"GO","municipio":"URUAÇU","telefone":"(62) 98627-2883","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Uruaçu/GO (Avulso)"],"lat":-14.5236,"lng":-49.1408,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Tennisson Barreira","tipo":"INSTALADOR","status":"ATIVO","uf":"BA","municipio":"BARREIRAS","telefone":"(77) 99121-7133","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Barreiras /BA"],"lat":-12.1528,"lng":-44.9903,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Ueide Alves Xavier","tipo":"INSTALADOR","status":"ATIVO","uf":"BA","municipio":"SALVADOR","telefone":"(71) 9310-9512","cpf":"928.218.205-34","rg":"07.935.04","cnpj":"48.557.622/0001-41","equipe":"","bases":["Bahia"],"lat":-12.9083,"lng":-38.4411,"geo_status":"bairro_match","logradouro":"Av 7 de Abril, Nº 4348, Torre D Apt 1204","bairro":"7 DE ABRIL","cep":"41385-160"},{"nome":"Willian Pereira Santana","tipo":"INSTALADOR","status":"ATIVO","uf":"GO","municipio":"GOIANIA","telefone":"(62) 98558-6827 / (62) 98309-4046","cpf":"894.199.281-87","rg":"3515301","cnpj":"","equipe":"","bases":["Goiania"],"lat":-16.6869,"lng":-49.2648,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Arthur Ferreira Souto (DF)","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASILIA","telefone":"(61) 99512-6417","cpf":"056.506.461-08","rg":"05.650.946-1","cnpj":"","equipe":"","bases":["Brasilia"],"lat":-15.7942,"lng":-47.8822,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Bruno dos Santos Sales","tipo":"INSTALADOR","status":"ATIVO","uf":"DF","municipio":"BRASILIA","telefone":"(61) 98155-8276","cpf":"987.313.781-53","rg":"2055628","cnpj":"39.240.673/0001-54","equipe":"","bases":["Goiania"],"lat":-15.8149,"lng":-47.9069,"geo_status":"bairro_match","logradouro":"Shcs Qd 502 Bloco C, 37, Nº 37, Parte 2063","bairro":"ASA SUL","cep":"70330-530"},{"nome":"Jornã Moreira de Ávila dos Santos","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"ALFENAS","telefone":"(35) 99954-7577","cpf":"109.500.326-70","rg":"MG1733146","cnpj":"48.998.829/0001-51","equipe":"","bases":["Alfenas"],"lat":-21.9244,"lng":-45.9484,"geo_status":"corrected","logradouro":"Pedro Celestino dos Santos, Nº 24","bairro":"JARDIM TROPICAL","cep":"37133-596"},{"nome":"Maxweel Silva de Carvalho","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"BELO HORIZONTE","telefone":"(31) 99793-7878","cpf":"088.158.246-85","rg":"MG1563967","cnpj":"55.961.245/0001-77","equipe":"","bases":["Belo Horizonte MG"],"lat":-19.9432,"lng":-43.9793,"geo_status":"bairro_match","logradouro":"Rua Maria Amelia Fomte Boa, Nº 11, Casa Fundos","bairro":"NOVA GAMELEIRA","cep":"30510-310"},{"nome":"Fabio Bernabe Barbosa","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"CAMPINAS","telefone":"(19) 99413-7850","cpf":"405.180.558-17","rg":"32.792.195-5","cnpj":"23.832.540/0001-37","equipe":"","bases":["Campinas SP (Instalador)"],"lat":-22.9099,"lng":-47.0626,"geo_status":"corrected","logradouro":"Rua Jose Floriano dos Santos, Nº 161","bairro":"JARDIM CARLOS LOURENÇO","cep":"13101-100"},{"nome":"Odilmar da Silva Garcia","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"CAMPINAS","telefone":"(19) 3365-1227 / (19) 99755-6647","cpf":"076.758.348-52","rg":"17.348.739-7","cnpj":"41.673.087/0001-45","equipe":"","bases":["Base Campinas"],"lat":-22.9099,"lng":-47.0626,"geo_status":"corrected","logradouro":"Rua Cícero Antônio de Souza, Nº 78, Casa","bairro":"JD. NOVO CAMPOS ELÍSEOS","cep":"13060-452"},{"nome":"Roger Daltrey Augusto (MG)","tipo":"INSTALADOR","status":"INATIVO","uf":"MG","municipio":"JUIZ DE FORA","telefone":"(32) 99197-4070","cpf":"067.724.896-24","rg":"1.199.469-6","cnpj":"","equipe":"","bases":["Juiz de Fora-MG"],"lat":-21.7641,"lng":-43.3496,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Guilherme Soares Tito (MG)","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"BELO HORIZONTE","telefone":"(31) 99472-0506","cpf":"046.019.346-56","rg":"6053516","cnpj":"","equipe":"","bases":["Belo Horizonte MG"],"lat":-19.9167,"lng":-43.9345,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Eduardo Duarte Silva Bh","tipo":"INSTALADOR","status":"ATIVO","uf":"MG","municipio":"BELO HORIZONTE","telefone":"(31) 98586-3063 / (31) 3383-4528","cpf":"046.346.046-47","rg":"1.168.060-5","cnpj":"","equipe":"","bases":["Belo Horizonte MG"],"lat":-19.9167,"lng":-43.9345,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Luiz Evilario Volpe (Campinas)","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"CAMPINAS","telefone":"(88) 98810-0686","cpf":"156.579.668-30","rg":"20.082.722-4","cnpj":"","equipe":"","bases":["Campinas SP (Instalador)"],"lat":-22.9099,"lng":-47.0626,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Yuri Silva de Araujo","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 96426-2242","cpf":"","rg":"26.018.40","cnpj":"","equipe":"","bases":["Rio de Janeiro (Rio de Janeiro) - Curicica RJ"],"lat":-22.9511,"lng":-43.3929,"geo_status":"bairro_match","logradouro":"","bairro":"CURICICA","cep":""},{"nome":"Abraão Menezes de França","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"MARILIA","telefone":"(11) 94734-9343","cpf":"224.344.178-09","rg":"42.325.002-4","cnpj":"55.886.858/0001-97","equipe":"","bases":["Instalador Marilia"],"lat":-22.2139,"lng":-49.9458,"geo_status":"corrected","logradouro":"R. Rinopolis, Nº 377, Maecado Alvorada","bairro":"PALMITAL","cep":"17511-180"},{"nome":"Carlos Antônio de Oliveira","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 97943-4468","cpf":"087.090.077-33","rg":"11.483.067-2","cnpj":"52.977.053/0001-60","equipe":"","bases":["Instalador Rio de Janeiro - Guaratiba RJ"],"lat":-23.0598,"lng":-43.5961,"geo_status":"bairro_match","logradouro":"Rua Aluízio Marques, Nº 18, Casa Cinza","bairro":"GUARATIBA","cep":"23036-560"},{"nome":"Eduardo Santos de Souza","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SOROCABA","telefone":"(15) 98812-7587","cpf":"358.631.868-52","rg":"43.441.472-4","cnpj":"53.563.032/0001-61","equipe":"","bases":["Base Sorocaba"],"lat":-23.5015,"lng":-47.4526,"geo_status":"corrected","logradouro":"Rua Victor Cioffi de Lucca, Nº 713, Casa","bairro":"SANTA ESMERALDA","cep":"18079-125"},{"nome":"Ernani Romualdo","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"NOVA IGUAÇU","telefone":"(21) 9506-8047","cpf":"","rg":"10.236.720-8","cnpj":"32.868.409/0001-10","equipe":"","bases":["Rio de Janeiro (Rio de Janeiro) - Nova Iguaçu"],"lat":-22.7592,"lng":-43.4511,"geo_status":"corrected","logradouro":"Alameda São Tomé, Nº 20","bairro":"KM 32","cep":"26298-599"},{"nome":"Alex de Souza Batista (RJ)","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 98154-9145","cpf":"100.684.127-03","rg":"20.570.126-1","cnpj":"","equipe":"","bases":["Rio de Janeiro (Rio de Janeiro)"],"lat":-22.9068,"lng":-43.1729,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Alex de Souza Batista (RJ)","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 98154-9145","cpf":"100.684.127-03","rg":"20.570.126-1","cnpj":"","equipe":"","bases":["Base Tecnica - (RJ) Oeste Rio"],"lat":-22.9398,"lng":-43.3583,"geo_status":"bairro_match","logradouro":"AV ALAGOAS, 135 - AP 204,","bairro":"GARDENIA AZUL","cep":""},{"nome":"João Augusto de Meneses Silva Jr","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"PRAIA GRANDE","telefone":"(61) 98564-5095 / (61) 3399-4889","cpf":"728.071.481-15","rg":"2070190","cnpj":"63.934.606/0001-14","equipe":"","bases":["Instalador Litoral (Praia Grande)"],"lat":-24.006,"lng":-46.4028,"geo_status":"corrected","logradouro":"Marechal Maurício José Cardoso, Nº 249, Apto 14","bairro":"CANTO DO FORTE","cep":"11700-140"},{"nome":"Leandro de Souza Gomes","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"BRODOWSKI","telefone":"(16) 9929-1420","cpf":"","rg":"4.187.399-5","cnpj":"22.231.834/0001-40","equipe":"","bases":["Instalador Brodowski SP"],"lat":-20.9812,"lng":-47.6607,"geo_status":"corrected","logradouro":"Rua dos Ipês, Nº 165, Casa Amarela de Esquina","bairro":"BOM JARDIM","cep":"14341-166"},{"nome":"Luis Henrique Muniz","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"PERUIBE","telefone":"(13) 99748-5114","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Instalador Peruibe"],"lat":-24.3203,"lng":-46.9997,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Marcelo Mennela de Jesus","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ATIBAIA","telefone":"(11) 96906-0680","cpf":"270.820.578-14","rg":"22.912.040-4","cnpj":"09.161.586/0001-40","equipe":"","bases":["Atibaia"],"lat":-23.1172,"lng":-46.5504,"geo_status":"corrected","logradouro":"Rua Gotas de Orvalho, Nº 260","bairro":"JD CEREJEIRAS","cep":"12950-652"},{"nome":"Marcos Luis Inacio","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO CARLOS","telefone":"(16) 3343-5974 / (16) 9795-3475","cpf":"288.999.668-93","rg":"3.352.068-4","cnpj":"","equipe":"","bases":["Instalador São Carlos"],"lat":-22.0087,"lng":-47.8911,"geo_status":"corrected","logradouro":"","bairro":"","cep":"13563-673"},{"nome":"Mateus Vinicius Torres da Silveira","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"RIBEIRÃO PRETO","telefone":"(19) 98752-2117","cpf":"437.079.728-44","rg":"5.509.676-2X","cnpj":"","equipe":"","bases":["Base Ribeirão Preto"],"lat":-21.1775,"lng":-47.8103,"geo_status":"corrected","logradouro":"","bairro":"","cep":"14094-645"},{"nome":"Matheus Lima da Silva (RJ)","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 97232-5545","cpf":"","rg":"26.356.87","cnpj":"","equipe":"","bases":["Rio de Janeiro (Rio de Janeiro)"],"lat":-22.9511,"lng":-43.3929,"geo_status":"bairro_match","logradouro":"","bairro":"CURICICA","cep":""},{"nome":"Jose Aparecido Paschoal","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ITAQUERA","telefone":"(11) 99668-9819","cpf":"072.705.168-71","rg":"01.533.377-1","cnpj":"","equipe":"","bases":["Base Leroy Merlin SP"],"lat":-23.5389,"lng":-46.4338,"geo_status":"corrected","logradouro":"","bairro":"","cep":""},{"nome":"Rafael do Vale Gonçalves Aguiar","tipo":"INSTALADOR","status":"INATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 97232-5545","cpf":"","rg":"21.497.57","cnpj":"","equipe":"","bases":["Rio de Janeiro (Rio de Janeiro)"],"lat":-22.9511,"lng":-43.3929,"geo_status":"bairro_match","logradouro":"","bairro":"CURICICA","cep":""},{"nome":"Rafael Freitas Fernandes","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"BAURU","telefone":"(14) 9734-0933","cpf":"213.289.668-28","rg":"29.055.143-2","cnpj":"","equipe":"","bases":["Base Bauru"],"lat":-22.3147,"lng":-49.0601,"geo_status":"corrected","logradouro":"","bairro":"","cep":"17039-323"},{"nome":"Reginaldo Luiz Franchini","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ARARAS","telefone":"(19) 98158-4148","cpf":"266.935.128-01","rg":"2.769.483-2","cnpj":"28.569.633/0001-34","equipe":"","bases":["Instalador Araras"],"lat":-22.3665,"lng":-47.3872,"geo_status":"corrected","logradouro":"Paraná, Nº 650, Bloco 13 Apto 204","bairro":"PQ INDUSTRIAL","cep":"13601-344"},{"nome":"Roberto Ibiapino Rodrigues","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"JARINU","telefone":"(11) 93800-0577","cpf":"322.137.458-54","rg":"3.261.735-0X","cnpj":"","equipe":"","bases":["Instalador Jundiaí / Jarinu"],"lat":-23.1042,"lng":-46.7285,"geo_status":"corrected","logradouro":"Av São Luis, Nº 419, em Frente Cogumelo Mazzei","bairro":"MARACANÃ","cep":"13244-238"},{"nome":"Roblego Raglicio Cesar Paiao","tipo":"BASE TÉCNICA","status":"ATIVO","uf":"SP","municipio":"SANTOS","telefone":"(13) 3561-4602 / (13) 99786-0250","cpf":"352.390.948-10","rg":"44.907.868-1","cnpj":"","equipe":"","bases":["Base Litoral (Santos)"],"lat":-23.9608,"lng":-46.3336,"geo_status":"corrected","logradouro":"","bairro":"","cep":"11086-495"},{"nome":"Roosevelt Farias dos Santos","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"DUQUE DE CAXIAS","telefone":"(21) 98884-2969 / (21) 2652-0977","cpf":"023.344.867-52","rg":"08.164.050-0","cnpj":"74.122.599/0001-72","equipe":"","bases":["Rio de Janeiro (Rio de Janeiro) - Duque de Caixias"],"lat":-22.7858,"lng":-43.3117,"geo_status":"corrected","logradouro":"Rua Floriano de Godoi, Nº 105","bairro":"PARQUE DUQUE DE CAXIAS","cep":"25085-050"},{"nome":"Thiago de Oliveira Goltare","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"NOVA IGUAÇU","telefone":"(21) 2763-7656 / (21) 98056-5097","cpf":"117.972.967-60","rg":"21.618.396-2","cnpj":"","equipe":"","bases":["Base Tecnica - (RJ) Centro Rio - Nova Iguaçu"],"lat":-22.7592,"lng":-43.4511,"geo_status":"corrected","logradouro":"","bairro":"AUSTIN","cep":"26087-385"},{"nome":"Wellington Santos Barbosa","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"CABO FRIO","telefone":"(22) 99835-7193 / (21) 96943-1626","cpf":"021.043.677-86","rg":"08.624.932-3","cnpj":"","equipe":"","bases":["Cabo Frio/RJ"],"lat":-22.8794,"lng":-42.0186,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Alan Ferreira Pereira Batista","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 96982-4140 / (21) 2214-1076","cpf":"128.311.037-70","rg":"25.499.376-9","cnpj":"","equipe":"","bases":["Rio de Janeiro (Instalador) - Guaratiba"],"lat":-22.9398,"lng":-43.3583,"geo_status":"bairro_match","logradouro":"","bairro":"GARDENIA AZUL","cep":""},{"nome":"Antonio Paixão de Oliveira","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 9794-4028","cpf":"154.073.527-37","rg":"31.420.755-6","cnpj":"52.977.053/0001-60","equipe":"","bases":["Rio de Janeiro (Instalador) - Guaratiba"],"lat":-22.9054,"lng":-43.5562,"geo_status":"bairro_match","logradouro":"Rua Aluízio Marques, Nº 18, Casa Cinza","bairro":"CAMPO GRANDE","cep":"23036-560"},{"nome":"Artur Garlopes de Lemos","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"BELFORD ROXO","telefone":"(21) 97026-3111","cpf":"052.001.167-83","rg":"11.143.231-6","cnpj":"","equipe":"","bases":["Rio de Janeiro (Instalador) - Belford Roxo"],"lat":-22.7594,"lng":-43.3975,"geo_status":"corrected","logradouro":"","bairro":"AREIA BRANCA","cep":"26140-230"},{"nome":"Jhonatas Francisco dos Santos","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ITAQUERA","telefone":"(11) 94001-9144","cpf":"361.218.738-41","rg":"26.339.946-9","cnpj":"","equipe":"","bases":["Praia Grande SP (Instalador)"],"lat":-23.5389,"lng":-46.4338,"geo_status":"corrected","logradouro":"","bairro":"","cep":""},{"nome":"Gabriel Jose Melo da Cruz","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 97943-4468","cpf":"193.784.667-96","rg":"27.698.739-3","cnpj":"52.977.053/0001-60","equipe":"","bases":["Rio de Janeiro (Instalador) - Cosmo"],"lat":-22.8764,"lng":-43.4753,"geo_status":"bairro_match","logradouro":"Rua Aluísio Marques, Nº 18, Casa Cinza","bairro":"COSMO","cep":"23036-560"},{"nome":"Robson Filho da Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 91067-9099","cpf":"332.867.508-67","rg":"43.329.231-3","cnpj":"","equipe":"","bases":["São Paulo (Instalador)"],"lat":-23.5505,"lng":-46.6333,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"04415-080"},{"nome":"Wanderson Benedito Pereira (RJ)","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"MESQUITA","telefone":"(21) 96767-7689","cpf":"083.788.837-95","rg":"12.347.266-4","cnpj":"","equipe":"","bases":["Mesquita RJ (Instalador)"],"lat":-22.7819,"lng":-43.4358,"geo_status":"name_fallback","logradouro":"","bairro":"COSMORAMA","cep":""},{"nome":"Alessandro Dutra Duarte","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"NOVA IGUAÇU","telefone":"(21) 99432-8763 / (21) 98728-0500","cpf":"036.376.527-14","rg":"09.792.835-2","cnpj":"34.704.636/0001-36","equipe":"","bases":["Nova Iguaçu"],"lat":-22.7592,"lng":-43.4511,"geo_status":"corrected","logradouro":"Rua Aracati, Nº S/N, Quadra 4 Lote 16","bairro":"PRADOS VERDES","cep":"26299-174"},{"nome":"Evandro Jose de Freitas Barbosa (SP)","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"BADIT BASSIT","telefone":"(17) 99603-6066","cpf":"338.024.128-85","rg":"43.362.704-9","cnpj":"","equipe":"","bases":["Badit Bassit"],"lat":-20.9158,"lng":-49.4281,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Ary Raposo (SP)","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"TIETE","telefone":"(19) 98844-0678","cpf":"325.678.288-42","rg":"42.095.713-3","cnpj":"","equipe":"","bases":["Tiete SP"],"lat":-23.1117,"lng":-47.7156,"geo_status":"name_fallback","logradouro":"","bairro":"","cep":""},{"nome":"Crislete Souza Vieira","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"NOVA IGUAÇU","telefone":"(21) 98517-3677","cpf":"095.681.464-66","rg":"3.490.098-5","cnpj":"22.298.093/0001-15","equipe":"","bases":["Rio de Janeiro (Nova Iguaçu)"],"lat":-22.7592,"lng":-43.4511,"geo_status":"corrected","logradouro":"Rua Manoel Cavalcante da Silva, Nº 282","bairro":"JARDIM PALMARES","cep":"26278-000"},{"nome":"Evanio Carvalho (Tiago Leonel)","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 93711-9715","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Base Drogasil Sudoeste"],"lat":-23.5505,"lng":-46.6333,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Felipe de Oliveira Graça","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 94734-1386","cpf":"353.615.808-05","rg":"44.082.070-4","cnpj":"42.855.332/0001-06","equipe":"","bases":["Base Drogasil Nordeste 1"],"lat":-23.5636,"lng":-46.4393,"geo_status":"bairro_match","logradouro":"Rua Alfredo Ricci, Nº 344, Cj 34 B","bairro":"JOSÉ BONIFÁCIO","cep":"08253-010"},{"nome":"Iago Barreto Vasconcelos","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"NOVA IGUAÇU","telefone":"(21) 97730-2543","cpf":"120.136.097-08","rg":"29.474.438-8","cnpj":"22.298.093/0001-15","equipe":"","bases":["Rio de Janeiro (Nova Iguaçu)"],"lat":-22.7592,"lng":-43.4511,"geo_status":"corrected","logradouro":"Rua Manoel Cavalcante da Silva, Nº 282","bairro":"JARDIM PALMARES","cep":"26278-000"},{"nome":"Jonatas Ferreira Santos Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ITAQUERA","telefone":"(11) 98223-8900","cpf":"","rg":"48.173.718-2","cnpj":"","equipe":"","bases":["Base Drogasil Nordeste 2"],"lat":-23.5389,"lng":-46.4338,"geo_status":"corrected","logradouro":"","bairro":"","cep":"09950-370"},{"nome":"Leonardo da Silva Matos","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"RIO DE JANEIRO","telefone":"(21) 96695-9712","cpf":"113.019.997-50","rg":"20.485.660-3","cnpj":"37.255.404/0001-36","equipe":"","bases":["Instalador Rio de Janeiro"],"lat":-23.0598,"lng":-43.5961,"geo_status":"bairro_match","logradouro":"Estrada da Grama, 593, Nº 593, Condomínio Saint Patrick","bairro":"GUARATIBA","cep":"23033-220"},{"nome":"Pedro Francisco de Sant Ana Nascimento","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 4248-1635 / (11) 96469-6073","cpf":"293.614.548-11","rg":"35.033.072-4","cnpj":"52.139.667/0001-73","equipe":"","bases":["Apoio Zona Leste"],"lat":-23.4723,"lng":-46.7389,"geo_status":"bairro_match","logradouro":"Rua José Garcia Terra, Nº 97","bairro":"JARDIM LISBOA","cep":"03675-000"},{"nome":"Tiago Leonel Barreto","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ITAQUERA","telefone":"(11) 95075-7352","cpf":"378.410.658-70","rg":"4.947.755-5","cnpj":"","equipe":"","bases":["Apoio Base Drogasil Sudoeste"],"lat":-23.5389,"lng":-46.4338,"geo_status":"corrected","logradouro":"","bairro":"","cep":""},{"nome":"Waldy Alves da Silva Filho","tipo":"INSTALADOR","status":"ATIVO","uf":"RJ","municipio":"ITABORAÍ","telefone":"(21) 97189-7500 / (21) 97567-1325","cpf":"126.607.748-03","rg":"08.570.223-1","cnpj":"14.488.747/0001-45","equipe":"","bases":["Itaboraí/RJ"],"lat":-22.7597,"lng":-42.8589,"geo_status":"corrected","logradouro":"Rua Oito, Nº 99, Sobrado","bairro":"HELIANOPOLIS. SANTO ANTÔNIO","cep":"24856-524"},{"nome":"Abmael Vieira da Rocha","tipo":"INSTALADOR","status":"ATIVO","uf":"SC","municipio":"LAGES","telefone":"(69) 99379-3677","cpf":"023.803.552-23","rg":"1259934","cnpj":"","equipe":"","bases":["Lages (SC)"],"lat":-27.8178,"lng":-50.3264,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Ederson Lúcio do Canto Ramos","tipo":"INSTALADOR","status":"ATIVO","uf":"RS","municipio":"PASSO FUNDO","telefone":"(51) 99930-2869","cpf":"651.760.140-68","rg":"40.125.287-5","cnpj":"63.905.005/0001-83","equipe":"","bases":["Passo Fundo"],"lat":-28.262,"lng":-52.4083,"geo_status":"corrected","logradouro":"Avenida Rio Grande, Nº 767, Apto.305","bairro":"VERA CRUZ","cep":"99040-000"},{"nome":"Leandro Menotti","tipo":"INSTALADOR","status":"ATIVO","uf":"RS","municipio":"GRAVATAÍ","telefone":"(51) 3469-3818 / (51) 99733-8137","cpf":"885.293.800-10","rg":"60.526.725-6","cnpj":"19.427.000/0001-09","equipe":"","bases":["Porto Alegre-RS"],"lat":-29.9378,"lng":-50.9936,"geo_status":"corrected","logradouro":"Rua Morro dos Conventos, Nº 549, Casa","bairro":"COHAB A","cep":"94050-100"},{"nome":"Natan Correia Ferreira","tipo":"INSTALADOR","status":"ATIVO","uf":"RS","municipio":"PORTO ALEGRE","telefone":"(51) 99886-9807","cpf":"016.810.270-62","rg":"41.017.780-0","cnpj":"","equipe":"","bases":["Porto Alegre-RS"],"lat":-30.0346,"lng":-51.2177,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Rodrigo do Nascimento Conceição","tipo":"INSTALADOR","status":"ATIVO","uf":"RS","municipio":"ALVORADA","telefone":"00000000000000","cpf":"038.522.802-30","rg":"3.087.663-0","cnpj":"","equipe":"","bases":["Alvorada - RS"],"lat":-29.9908,"lng":-51.0831,"geo_status":"corrected","logradouro":"","bairro":"","cep":""},{"nome":"Alexandre Ferreira da Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"FAZENDA RIO GRANDE","telefone":"(81) 8761-9710 / (81) 9961-6886","cpf":"794.208.424-87","rg":"4291804","cnpj":"","equipe":"","bases":["Fazenda Rio Grande (Curitiba PR)"],"lat":-25.6526,"lng":-49.3001,"geo_status":"corrected","logradouro":"Travessa Panamá 116 B, Nº 116 B","bairro":"NOÇÕES","cep":"83823-040"},{"nome":"Carlos Eduardo Correa Rochesk","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"BASE CURITIBA","telefone":"(41) 9997-0495 / (41) 9995-6334","cpf":"064.811.879-74","rg":"9.849.944-0","cnpj":"","equipe":"","bases":["Base Curitiba"],"lat":-25.4284,"lng":-49.2733,"geo_status":"corrected","logradouro":"","bairro":"","cep":"83824-478"},{"nome":"José Vicente Vassan","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"CURITIBA","telefone":"(41) 9950-5777","cpf":"","rg":"4.930.299-1","cnpj":"30.592.313/0001-47","equipe":"","bases":["Curitiba PR"],"lat":-25.4284,"lng":-49.2733,"geo_status":"bairro_match","logradouro":"Av .maringa, Nº 766, Rick Auto Peças","bairro":"CENTRO","cep":"83324-000"},{"nome":"Eduardo José Lopes Junior","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"PAIÇANDU","telefone":"(43) 99620-0779 / (44) 98833-2129","cpf":"054.414.139-30","rg":"8.230.981-0","cnpj":"33.398.271/0001-04","equipe":"","bases":["Instalador Paissandú PR"],"lat":-23.6601,"lng":-51.8565,"geo_status":"corrected","logradouro":"Rua Alecio Manhane, Nº 421","bairro":"JD MAZIEIRO","cep":"87140-000"},{"nome":"Gabriel Antônio da Silva Geres","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"MARINGÁ","telefone":"(11) 99781-3101 / (11) 2043-7044","cpf":"226.601.188-09","rg":"30.893.255-9","cnpj":"26.196.940/0001-91","equipe":"","bases":["Maringa"],"lat":-23.4273,"lng":-51.9375,"geo_status":"corrected","logradouro":"Rua Professora Abegair Corina dos Santos, Nº 839","bairro":"JD NOVO PAULISTA","cep":"87047-814"},{"nome":"Eduardo de Jesus Figueiredo Garcia (PR)","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"TOLEDO","telefone":"(45) 99860-3902","cpf":"012.251.399-10","rg":"13.494.797-1","cnpj":"","equipe":"","bases":["Toledo PR"],"lat":-24.7254,"lng":-53.7427,"geo_status":"corrected","logradouro":"","bairro":"","cep":""},{"nome":"Edson Luis Bauer","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"CURITIBA","telefone":"(41) 99884-2735 / (41) 99969-2114","cpf":"836.186.009-68","rg":"5.867.852-0","cnpj":"26.581.704/0001-99","equipe":"","bases":["Curitiba PR"],"lat":-25.5253,"lng":-49.3025,"geo_status":"bairro_match","logradouro":"Brasil Paraná de Cristo, Nº 185, Bloco 10 AP 202","bairro":"PINHEIRINHO","cep":"81820-013"},{"nome":"Washington Arcanjo Barsotti","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"LONDRINA","telefone":"(15) 99626-4869","cpf":"363.554.498-17","rg":"43.242.342-4","cnpj":"50.272.014/0001-32","equipe":"","bases":["Londrina PR"],"lat":-23.3045,"lng":-51.1696,"geo_status":"corrected","logradouro":"Av Rosalvo Marques Bonfim, Nº 1655, Bloco 8 AP 104","bairro":"MARIA CELINA 2","cep":"86081-538"},{"nome":"Humberto Aparecido Arcanjo Barsotti","tipo":"INSTALADOR","status":"ATIVO","uf":"PR","municipio":"LONDRINA","telefone":"(15) 99839-1503","cpf":"363.554.258-02","rg":"43.242.342-4","cnpj":"50.272.014/0001-32","equipe":"","bases":["Londrina PR"],"lat":-23.3045,"lng":-51.1696,"geo_status":"corrected","logradouro":"Rua Jerônimo Gonçalves da Silva, Nº 79","bairro":"JD MARIA CELINA","cep":"86081-540"},{"nome":"Everson Carlos Arcanjo Barsotti","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"ITARARÉ","telefone":"(15) 96945-0603","cpf":"404.638.138-80","rg":"48.684.084-0","cnpj":"50.272.014/0001-32","equipe":"","bases":["Itarare"],"lat":-24.1125,"lng":-49.3389,"geo_status":"corrected","logradouro":"Rua São Pedro, Nº 4466","bairro":"JD PAULICÉIA","cep":"18464-292"},{"nome":"Marcelo Carneiro Vieira","tipo":"INSTALADOR","status":"ATIVO","uf":"RS","municipio":"CANOAS","telefone":"(51) 98400-9743","cpf":"733.976.950-15","rg":"90.652.601-1","cnpj":"06.347.373/0001-10","equipe":"","bases":["Canoas"],"lat":-29.9182,"lng":-51.1843,"geo_status":"corrected","logradouro":"Rua Aurora, Nº 1100, Casa 71","bairro":"MARECHAL RONDON","cep":"92020-510"},{"nome":"Rodrigo dos Santos Napolitano","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 94360-2734","cpf":"313.791.408-62","rg":"30.022.637-8","cnpj":"51.598.036/0001-50","equipe":"","bases":["Dpsp Base Leste"],"lat":-23.5016,"lng":-46.4829,"geo_status":"bairro_match","logradouro":"Rua Álvaro Peres, Nº 11","bairro":"ENGENHEIRO GOULART","cep":"03726-190"},{"nome":"João Fabio Pantoja (Tiago Leonel)","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(69) 99254-9921","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Apoio Drogasil / Dpsp"],"lat":-23.5505,"lng":-46.6333,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Tiago Leonel Barreto","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 95075-7352","cpf":"378.410.658-70","rg":"4.947.755-5","cnpj":"","equipe":"","bases":["Dpsp Base Abc"],"lat":-23.5505,"lng":-46.6333,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Eduardo Claudio de Lima","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 98913-6172","cpf":"129.981.328-39","rg":"22.825.273-8","cnpj":"","equipe":"","bases":["Base Oeste"],"lat":-23.5505,"lng":-46.6333,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"02678-000"},{"nome":"Erikson Paula dos Reis","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"BELÉM","telefone":"(91) 98744-9210","cpf":"685.034.742-04","rg":"3260660","cnpj":"","equipe":"","bases":["Base Pará"],"lat":-1.4558,"lng":-48.5039,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"66650-404"},{"nome":"Evanio Carvalho (Tiago Leonel)","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 93711-9715","cpf":"","rg":"","cnpj":"","equipe":"","bases":["Base Sul"],"lat":-23.5505,"lng":-46.6333,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Guilherme Bispo dos Santos","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 93208-8926","cpf":"409.583.148-02","rg":"36.931.580-7","cnpj":"40.543.641/0001-07","equipe":"","bases":["Base Sudoeste"],"lat":-23.512,"lng":-46.78,"geo_status":"bairro_match","logradouro":"Rua Uberlândia, 14, Nº 14","bairro":"SOL NASCENTE","cep":"05280-120"},{"nome":"Helctor Augusto Costa","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"MAUÁ","telefone":"(11) 95116-3728","cpf":"352.889.188-21","rg":"4.158.711-3X","cnpj":"","equipe":"","bases":["Base Vip"],"lat":-23.6678,"lng":-46.4614,"geo_status":"corrected","logradouro":"","bairro":"","cep":"09371-210"},{"nome":"Marcelo Rebechi","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"GUARULHOS","telefone":"(11) 96768-8477","cpf":"","rg":"","cnpj":"21.855.877/0001-34","equipe":"","bases":["Base Leste"],"lat":-23.4822,"lng":-46.6625,"geo_status":"cep_match","logradouro":"Rua Ipira, Nº 99","bairro":"JD PRÉ DUTRA","cep":"07172-360"},{"nome":"Marcelo Sanchez","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 99768-7237","cpf":"","rg":"","cnpj":"50.254.581/0001-66","equipe":"","bases":["Apoio Zona Sul"],"lat":-23.6413,"lng":-46.7473,"geo_status":"bairro_match","logradouro":"Ordenações Filipinas, Nº 368, Casa","bairro":"VILA MORSE","cep":"05623-020"},{"nome":"Marco Douglas de Amorim Andrade","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 99799-8897","cpf":"395.131.388-95","rg":"4.721.315-1","cnpj":"31.642.311/0001-88","equipe":"","bases":["Apoio Zona Sul"],"lat":-23.753,"lng":-46.6864,"geo_status":"bairro_match","logradouro":"Rua Olimpio Soares de Carvalho, Nº 430","bairro":"PQ GRAJAÚ","cep":"04842-370"},{"nome":"Marcos Jose Pereira","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"96356-0855 / 2432-3805","cpf":"291.658.718-71","rg":"3.281.300-6","cnpj":"","equipe":"","bases":["Base Norte Varejo e Dpsp"],"lat":-23.4822,"lng":-46.6625,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"07174-000"},{"nome":"Paulo Cesar Serafim","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 95953-7560 / (11) 95328-5882","cpf":"113.269.868-56","rg":"16.905.06","cnpj":"56.986.537/0001-27","equipe":"","bases":["Base Abc"],"lat":-23.6523,"lng":-46.638,"geo_status":"bairro_match","logradouro":"Rua Estilac, Nº 228","bairro":"VILA MARTE","cep":"04254-090"},{"nome":"Pedro Ricardo Albertini","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"2594-7782 / 94633-9339","cpf":"096.104.248-64","rg":"1.881.757-4X","cnpj":"","equipe":"","bases":["Base Centro"],"lat":-23.5505,"lng":-46.6333,"geo_status":"cep_match","logradouro":"","bairro":"","cep":"04436-040"},{"nome":"Rodrigo Napoleão","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 99148-0997","cpf":"","rg":"32.760.34","cnpj":"60.257.981/0001-89","equipe":"","bases":["Apoio Técnico Leste"],"lat":-23.5398,"lng":-46.4613,"geo_status":"bairro_match","logradouro":"Rua Piava, Nº 118","bairro":"ITAQUERA","cep":"08220-330"},{"nome":"Rui Pereira da Costa Junior","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"SÃO PAULO","telefone":"(11) 99512-1695","cpf":"260.711.608-20","rg":"26.534.260-0","cnpj":"25.150.504/0001-19","equipe":"","bases":["Clientes Especiais"],"lat":-23.5446,"lng":-46.5757,"geo_status":"bairro_match","logradouro":"Rua Cavalieri, Nº 70, Casa 4","bairro":"QUARTA PARADA","cep":"03175-060"},{"nome":"William Souza Aguiar Pereira","tipo":"INSTALADOR","status":"ATIVO","uf":"SP","municipio":"GUARULHOS","telefone":"(11) 95958-3498","cpf":"470.231.518-85","rg":"50.587.177-4","cnpj":"64.875.189/0001-49","equipe":"","bases":["Apoio Zona Leste"],"lat":-23.4822,"lng":-46.6625,"geo_status":"cep_match","logradouro":"Estrada Acácio Antônio Batista, Nº 1067, Salão Amarelo","bairro":"VILA NOVA BONSUCESSO","cep":"07175-080"},{"nome":"Paulo Henrique Guimaraes Luiz","tipo":"INSTALADOR","status":"ATIVO","uf":"AL","municipio":"MACEIO","telefone":"(38) 99838-5281","cpf":"082.548.406-52","rg":"1.707.501-4","cnpj":"","equipe":"","bases":["Maceio"],"lat":-9.6658,"lng":-35.7353,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Samuel Freire da Silva de Oliveira","tipo":"INSTALADOR","status":"ATIVO","uf":"AM","municipio":"MANAUS","telefone":"(92) 98490-7404","cpf":"","rg":"3.283.517-5","cnpj":"27.071.153/0001-86","equipe":"","bases":[],"lat":-3.1022,"lng":-60.0361,"geo_status":"bairro_match","logradouro":"Beco Santa Helena, Nº 10, Avenida Brasil","bairro":"SÃO JORGE","cep":"69033-650"},{"nome":"Francisco G de Souza da Costa Crisante (GO)","tipo":"INSTALADOR","status":"ATIVO","uf":"GO","municipio":"GOIANIA","telefone":"(61) 98333-3017","cpf":"070.056.033-54","rg":"04.840.388-2","cnpj":"","equipe":"","bases":["Goiania"],"lat":-16.6869,"lng":-49.2648,"geo_status":"city_match","logradouro":"","bairro":"","cep":""},{"nome":"Lucas Lima da Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"PB","municipio":"JOÃO PESSOA","telefone":"(83) 99943-4793","cpf":"114.429.664-16","rg":"3995976","cnpj":"48.416.803/0001-58","equipe":"","bases":[],"lat":-7.1461,"lng":-34.8081,"geo_status":"bairro_match","logradouro":"","bairro":"PORTAL DO SOL","cep":"58046-600"},{"nome":"Jose Cleber da Silva (PE)","tipo":"INSTALADOR","status":"ATIVO","uf":"PE","municipio":"RECIFE NORTE","telefone":"(81) 98202-0804","cpf":"009.879.584-88","rg":"5431272","cnpj":"","equipe":"","bases":["Recife Sul/Norte"],"lat":-8.0476,"lng":-34.877,"geo_status":"city_match","logradouro":"","bairro":"ZUMBI","cep":""},{"nome":"Amarildo Dbuglêaux Da Silva e Silva","tipo":"INSTALADOR","status":"ATIVO","uf":"RR","municipio":"BOA VISTA","telefone":"(95) 8101-0854","cpf":"561.077.901-44","rg":"1360.940","cnpj":"31.279.78/0001-08","equipe":"","bases":["Boa Vista RR"],"lat":2.7888,"lng":-60.673,"geo_status":"bairro_match","logradouro":"","bairro":"ALVORADA","cep":""}];
+
+// ── Estado ───────────────────────────────────────────────────────────────────
+let selUF=new Set(), selMun=new Set(), selBase=new Set();
+let filteredData=[];
+let markers=[];
+
+// ── Mapa ─────────────────────────────────────────────────────────────────────
+const map = L.map('map',{center:[-15.5,-50],zoom:4.5,
+  attributionControl:false, zoomControl:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  {maxZoom:18,attribution:'© OpenStreetMap © CartoDB'}).addTo(map);
+
+function tipoColor(tipo){
+  const t=(tipo||'').toUpperCase();
+  if(t.includes('BASE'))return'#4CAF50';
+  if(t.includes('AJUDANTE'))return'#FF9800';
+  return'#EB1E28';
+}
+
+function makeIcon(tipo){
+  const c=tipoColor(tipo);
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="16" r="15" fill="${c}" stroke="#fff" stroke-width="2"/><path d="M16 7.5c-2.8 0-5 2.2-5 5v3.2l-1.6 2.4c-.3.5.1 1.1.7 1.1h11.8c.6 0 1-.6.7-1.1L21 15.7v-3.2c0-2.8-2.2-5-5-5z" fill="#fff"/><circle cx="16" cy="21.5" r="1.6" fill="#fff"/><path d="M22.2 9.5l-2.1 2.1 1.4 1.4 2.1-2.1z" fill="#fff" opacity=".9"/><rect x="21.2" y="12.6" width="1.2" height="2.8" rx=".3" transform="rotate(45 21.8 14)" fill="#fff" opacity=".9"/></svg>`;
+  return L.divIcon({
+    className:'tech-icon',
+    html:`<div class="tech-marker" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));cursor:pointer;transition:transform .2s;">${svg}</div>`,
+    iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-16]
+  });
+}
+
+function copyText(txt, btn){
+  navigator.clipboard.writeText(txt).then(()=>{
+    const orig=btn.textContent; btn.textContent='✓ COPIADO'; btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent=orig;btn.classList.remove('copied');},1500);
+  });
+}
+
+function buildPopup(r){
+  const c=tipoColor(r.tipo);
+  const geoWarn = (r.geo_status&&r.geo_status!=='ok'&&r.geo_status!=='full'&&r.geo_status!=='mun_ok'&&r.geo_status!=='dict_match'&&r.geo_status!=='extra_dict')
+    ?`<div class="geo-warn">Localização aproximada (${r.geo_status})</div>`:'';
+
+  const basesHTML = r.bases&&r.bases.length
+    ?`<div class="popup-row"><span class="popup-key">BASES</span><div><div class="bases-list">${r.bases.map(b=>`<span class="base-chip">${b.replace('BASE TECNICA - ','').replace('BASE - ','')}</span>`).join('')}</div></div></div>`:'';
+
+  function row(key,val){
+    if(!val)return`<div class="popup-row"><span class="popup-key">${key}</span><span class="popup-val" style="color:#555">—</span></div>`;
+    return`<div class="popup-row"><span class="popup-key">${key}</span><span class="popup-val">${val}</span><button class="copy-btn" onclick="copyText('${val.replace(/'/g,"\\'")}',this)">COPIAR</button></div>`;
+  }
+
+  const allData=`Nome: ${r.nome}\nTipo: ${r.tipo}\nTelefone: ${r.telefone||'—'}\nCPF: ${r.cpf||'—'}\nRG: ${r.rg||'—'}`;
+
+  return`<div class="popup-header" style="background:${c}">
+    <div><div class="ph-name">${r.nome}</div><div class="ph-tipo">${r.tipo}</div></div>
+  </div>
+  <div class="popup-body">
+    ${r.tipo&&r.tipo.includes('AJUDANTE')?'':row('TELEFONE',r.telefone)}
+    ${row('CPF',r.cpf)}
+    ${row('RG',r.rg)}
+    ${r.equipe&&r.equipe!='N/A'?row('EQUIPE',r.equipe):''}
+    ${row('MUNICÍPIO',r.municipio+(r.uf?', '+r.uf:''))}
+    ${r.bairro&&r.bairro.trim()?row('BAIRRO',r.bairro.trim()):''}
+    ${basesHTML}
+    ${geoWarn}
+    <button class="popup-copy-all" onclick="copyText(\`${allData.replace(/`/g,'\\`')}\`,this)">📋 COPIAR TODOS OS DADOS</button>
+  </div>`;
+}
+
+// ── Renderizar marcadores ─────────────────────────────────────────────────────
+function renderMarkers(data){
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
+  const visible=data.filter(r=>r.lat&&r.lng);
+  document.getElementById('map-count').textContent=visible.length;
+  visible.forEach(r=>{
+    const m=L.marker([r.lat,r.lng],{icon:makeIcon(r.tipo)})
+      .bindPopup(buildPopup(r),{maxWidth:300,minWidth:260})
+      .addTo(map);
+    markers.push(m);
+  });
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────────
+function applyFilters(){
+  const search=document.getElementById('search-input').value.toLowerCase().trim();
+  const tipo=document.getElementById('filter-tipo').value;
+  const status=document.getElementById('filter-status').value;
+
+  filteredData=RAWDATA.filter(r=>{
+    const s=r.status.toUpperCase();
+    if(status&&s!==status.toUpperCase())return false;
+    if(tipo&&!r.tipo.includes(tipo))return false;
+    if(selUF.size&&!selUF.has(r.uf.toUpperCase()))return false;
+    if(selMun.size&&!selMun.has(r.municipio.toUpperCase()))return false;
+    if(selBase.size){const rb=new Set(r.bases);if(![...selBase].some(b=>rb.has(b)))return false;}
+    if(search){
+      const hay=(r.nome+r.municipio+r.uf+r.tipo).toLowerCase();
+      if(!hay.includes(search))return false;
+    }
+    return true;
+  });
+
+  renderMarkers(filteredData);
+  renderLista(filteredData);
+  document.getElementById('result-count').textContent=`${filteredData.length} empresa(s) credenciada(s)`;
+  renderSearchResults(search, filteredData);
+  updateMunOptions();
+  updateBaseOptions();
+}
+
+function srCopy(val, btn){
+  navigator.clipboard.writeText(val).then(()=>{
+    const orig=btn.textContent; btn.textContent='✓'; btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent=orig; btn.classList.remove('ok');},1400);
+  });
+}
+
+function tipoBadgeStyle(tipo){
+  const t=tipo||'';
+  const c=tipoColor(t);
+  return `background:${c};color:#fff;`;
+}
+
+function srFocusMap(lat,lng,nome){
+  if(lat&&lng){
+    map.setView([lat,lng],13);
+    // Abrir popup do marcador correspondente
+    markers.forEach(m=>{
+      if(Math.abs(m.getLatLng().lat-lat)<0.001&&Math.abs(m.getLatLng().lng-lng)<0.001){
+        m.openPopup();
+      }
+    });
+  }
+}
+
+function renderSearchResults(search, data){
+  const panel=document.getElementById('search-results-panel');
+  if(!search){panel.classList.remove('visible');panel.innerHTML='';return;}
+
+  // Filtrar apenas por nome quando há texto de busca
+  const byName=data.filter(r=>r.nome.toLowerCase().includes(search));
+
+  if(byName.length===0){
+    panel.innerHTML=`<div class="sr-empty">Nenhuma empresa credenciada encontrada para "<strong>${search}</strong>"</div>`;
+    panel.classList.add('visible');
+    return;
+  }
+
+  const header=`<div class="sr-header">${byName.length} empresa(s) credenciada(s)</div>`;
+
+  const cards=byName.slice(0,10).map(r=>{
+    const tc=tipoColor(r.tipo);
+    const loc=[r.logradouro,r.bairro,r.municipio,r.uf].filter(Boolean).join(', ')||'Localização não disponível';
+    const basesHTML=r.bases&&r.bases.length
+      ?`<div class="sr-bases">${r.bases.slice(0,4).map(b=>`<span class="sr-base-tag">${b.replace('BASE TECNICA - ','').replace('BASE - ','')}</span>`).join('')}${r.bases.length>4?`<span class="sr-base-tag">+${r.bases.length-4}</span>`:''}</div>`
+      :'';
+
+    function field(key,val){
+      if(!val)return`<div class="sr-field"><div class="sr-field-key">${key}</div><div class="sr-field-val" style="color:#444">—</div></div>`;
+      return`<div class="sr-field"><div class="sr-field-key">${key}</div><div class="sr-field-val">${val}<button class="sr-copy" onclick="event.stopPropagation();srCopy('${val.replace(/'/g,"\'")}',this)" title="Copiar">⧉</button></div></div>`;
+    }
+
+    return`<div class="sr-card" onclick="srFocusMap(${r.lat||'null'},${r.lng||'null'},'${r.nome.replace(/'/g,"\'")}')">
+      <div class="sr-card-top">
+        <div class="sr-nome">${r.nome}</div>
+        <span class="sr-tipo-badge" style="${tipoBadgeStyle(r.tipo)}">${r.tipo.replace('TÉCNICA','TÉC.').replace('INSTALADOR','INST.')}</span>
+      </div>
+      <div class="sr-fields">
+        ${field('TELEFONE',r.telefone)}
+        ${field('CPF',r.cpf)}
+        ${field('RG',r.rg)}
+        ${field('STATUS',r.status)}
+      </div>
+      ${r.equipe&&r.equipe!='N/A'?`<div class="sr-loc" style="color:var(--ocre)">Equipe: ${r.equipe}</div>`:''}
+      <div class="sr-loc">📍 ${loc}</div>
+      ${basesHTML}
+      ${r.lat?`<button class="sr-focus-btn" onclick="event.stopPropagation();srFocusMap(${r.lat},${r.lng},'${r.nome.replace(/'/g,"\'")}')">▶ Ver no mapa</button>`:'<div style="font-size:9px;color:var(--ocre);margin-top:4px">⚠ Localização aproximada</div>'}
+    </div>`;
+  }).join('');
+
+  const extra=byName.length>10?`<div class="sr-empty" style="font-size:10px">Mostrando 10 de ${byName.length}. Refine a busca para ver mais.</div>`:'';
+
+  panel.innerHTML=header+cards+extra;
+  panel.classList.add('visible');
+}
+
+function clearFilter(f){
+  if(f==='uf'){selUF.clear();document.querySelectorAll('#ms-uf input').forEach(i=>i.checked=false);updateChips('uf');}
+  if(f==='mun'){selMun.clear();document.querySelectorAll('#ms-mun input').forEach(i=>i.checked=false);updateChips('mun');}
+  if(f==='base'){selBase.clear();document.querySelectorAll('#ms-base input').forEach(i=>i.checked=false);updateChips('base');}
+  applyFilters();
+}
+
+function resetFilters(){
+  selUF.clear();selMun.clear();selBase.clear();
+  document.getElementById('search-input').value='';
+  document.getElementById('filter-tipo').value='';
+  document.getElementById('filter-status').value='ATIVO';
+  document.querySelectorAll('.multi-select input').forEach(i=>i.checked=false);
+  ['uf','mun','base'].forEach(updateChips);
+  applyFilters();
+}
+
+// ── Multi-select helpers ──────────────────────────────────────────────────────
+function buildMultiSelect(containerId, values, selSet, filterKey){
+  const el=document.getElementById(containerId);
+  el.innerHTML=values.map(v=>`
+    <label class="multi-opt">
+      <input type="checkbox" value="${v}" ${selSet.has(v)?'checked':''}
+        onchange="toggleSel('${filterKey}','${v}',this.checked)"/>
+      ${v}
+    </label>`).join('');
+}
+
+function toggleSel(key,val,checked){
+  const map_={'uf':selUF,'mun':selMun,'base':selBase};
+  const s=map_[key];
+  if(checked)s.add(val); else s.delete(val);
+  updateChips(key);
+  applyFilters();
+}
+
+function updateChips(key){
+  const map_={'uf':[selUF,'chips-uf'],'mun':[selMun,'chips-mun'],'base':[selBase,'chips-base']};
+  const [s,cid]=map_[key];
+  document.getElementById(cid).innerHTML=[...s].map(v=>
+    `<span class="chip" onclick="toggleSel('${key}','${v}',false);document.querySelector('#ms-${key} input[value=\\'${v}\\']').checked=false">${v} ✕</span>`
+  ).join('');
+}
+
+function updateMunOptions(){
+  // Municípios disponíveis dado UFs selecionadas
+  const baseData=selUF.size?RAWDATA.filter(r=>selUF.has(r.uf.toUpperCase())):RAWDATA;
+  const muns=[...new Set(baseData.map(r=>r.municipio.toUpperCase()).filter(Boolean))].sort();
+  buildMultiSelect('ms-mun',muns,selMun,'mun');
+}
+
+function updateBaseOptions(){
+  const baseData=selUF.size?RAWDATA.filter(r=>selUF.has(r.uf.toUpperCase())):RAWDATA;
+  const bases=[...new Set(baseData.flatMap(r=>r.bases||[]))].sort();
+  buildMultiSelect('ms-base',bases,selBase,'base');
+}
+
+// ── Lista de empresas credenciadas ─────────────────────────────────────────────────────────
+function renderLista(data){
+  document.getElementById('lista-count').textContent=`${data.length} empresa(s)`;
+  document.getElementById('tec-list').innerHTML=data.slice(0,200).map(r=>`
+    <div class="tec-item" onclick="focusTec(${r.lat},${r.lng})">
+      <div class="tec-dot" style="background:${tipoColor(r.tipo)}"></div>
+      <div class="tec-info">
+        <div class="tec-nome">${r.nome}</div>
+        <div class="tec-tipo">${r.tipo}</div>
+        <div class="tec-meta">${r.municipio||'—'}${r.bairro&&r.bairro.trim()?' / '+r.bairro.trim():''}${r.uf?', '+r.uf:''}</div>
+      </div>
+    </div>`).join('')+(data.length>200?`<div style="padding:12px;color:var(--gray);font-size:10px;text-align:center">+ ${data.length-200} registros. Use os filtros para refinar.</div>`:'');
+}
+
+function focusTec(lat,lng){
+  if(lat&&lng){map.setView([lat,lng],12);switchTab('lista');}
+}
+
+// ── Indicadores ───────────────────────────────────────────────────────────────
+function renderIndicadores(){
+  const all=RAWDATA;
+  const ativos=all.filter(r=>r.status.toUpperCase()==='ATIVO');
+  const inativos=all.filter(r=>r.status.toUpperCase()==='INATIVO');
+  const ufsAtivas=new Set(ativos.map(r=>r.uf.toUpperCase()).filter(r=>r&&r.length===2));
+
+  document.getElementById('kpi-total').textContent=all.length;
+  document.getElementById('kpi-ativos').textContent=ativos.length;
+  document.getElementById('kpi-inativos').textContent=inativos.length;
+  document.getElementById('kpi-ufs').textContent=ufsAtivas.size;
+  document.getElementById('kpi-cobertura').textContent=Math.round(ufsAtivas.size/27*100);
+
+  // Tipos
+  const tipoMap={};
+  all.forEach(r=>{tipoMap[r.tipo]=(tipoMap[r.tipo]||0)+1;});
+  const tipoColors={'INSTALADOR':'#EB1E28','BASE TÉCNICA':'#4CAF50','AJUDANTE':'#FF9800','AVULSO':'#EB1E28'};
+  document.getElementById('tipo-breakdown').innerHTML=
+    Object.entries(tipoMap).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`
+      <div class="tipo-row">
+        <div class="tipo-badge"><div class="dot" style="background:${tipoColors[t]||'#999'}"></div>${t}</div>
+        <div class="tipo-count">${c}<span>total</span></div>
+      </div>`).join('');
+
+  // UF ranking (ativos)
+  const ufCount={};
+  ativos.forEach(r=>{if(r.uf&&r.uf.length===2)ufCount[r.uf]=(ufCount[r.uf]||0)+1;});
+  const topUF=Object.entries(ufCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxUF=topUF[0]?topUF[0][1]:1;
+  document.getElementById('uf-ranking').innerHTML=topUF.map(([uf,n])=>`
+    <div class="uf-bar-row">
+      <div class="uf-bar-label">${uf}</div>
+      <div class="uf-bar-wrap"><div class="uf-bar-fill" style="width:${n/maxUF*100}%"></div></div>
+      <div class="uf-bar-num">${n}</div>
+    </div>`).join('');
+}
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['indicadores','filtros','lista'];
+    t.classList.toggle('active',names[i]===name);
+  });
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function init(){
+  // Normalizar UFs
+  RAWDATA.forEach(r=>{
+    if(r.uf)r.uf=r.uf.trim().toUpperCase();
+    if(r.municipio)r.municipio=r.municipio.trim().toUpperCase();
+  });
+
+  const allUFs=[...new Set(RAWDATA.map(r=>r.uf).filter(u=>u&&u.length===2))].sort();
+  buildMultiSelect('ms-uf',allUFs,selUF,'uf');
+  updateMunOptions();
+  updateBaseOptions();
+  renderIndicadores();
+
+  // Default: mostrar ativos no mapa
+  document.getElementById('filter-status').value='ATIVO';
+  applyFilters();
+})();
+</script>
+</body>
+</html>
